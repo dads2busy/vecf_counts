@@ -1,21 +1,29 @@
-# query 2
+library(data.table)
+# query 4
 con <- sdalr::con_db(dbname = "vecf", user = "aschroed", host = "localhost", port = 5433, pass = "Iwnftp$2")
-vdss <- data.table::setDT(DBI::dbGetQuery(con, "select * from q2_dss_customers_by_year where calender_year_number = 2016"))
-vdoe <- data.table::setDT(DBI::dbGetQuery(con, "select * from q2_doe_student_records"))
 
-vdoe_unq <- unique(vdoe[school_year==2016, .(unique_id, associated_id, school_year)])
+dss <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_dss_customers_by_year"))
+# eliminate duplicates
+dss <- unique(dss)
+# remove those that have multiple entries and different data for same year
+dss_grt1 <- dss[, .N, by = list(unique_id, calender_year_number)][N>1, .(unique_id)]
+dss <- dss[!unique_id %in% dss_grt1]
+# fix spelling of calendar
+names(dss)[names(dss) == "calender_year_number"] <- "calendar_year_number"
 
-vdss_vdoe_lj <- merge(vdss, vdoe_unq, by = "unique_id", all.x = T)
 
-vdss_vdoe_lj[is.na(associated_id), .N]
+dss_foster <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_dss_foster_care_customers_by_year"))
+dss_foster <- unique(dss_foster)
+dss_foster_grt1 <- dss_foster[, .N, by = list(unique_id, calendar_year_number)][N>1, .(unique_id)]
+dss_foster <- dss_foster[!unique_id %in% dss_foster_grt1]
 
-# query 3
-con <- sdalr::con_db(dbname = "vecf", user = "aschroed", host = "localhost", port = 5433, pass = "Iwnftp$2")
-vdss <- data.table::setDT(DBI::dbGetQuery(con, "select * from q3_dss_customers_by_year"))
-vdss_snap <- data.table::setDT(DBI::dbGetQuery(con, "select * from q3_dss_snap_customers_by_year"))
-vocs <- data.table::setDT(DBI::dbGetQuery(con, "select * from q3_ocs_services_by_year where program_year = 2016"))
-vdoe <- data.table::setDT(DBI::dbGetQuery(con, "select * from q3_doe_unique_student_listings"))
-vdoe_vpip <- data.table::setDT(DBI::dbGetQuery(con, "select * from q3_doe_vpi_plus"))
+ddf <- merge(dss, dss_foster, by = c("unique_id", "calendar_year_number"), all.x = T)
+
+
+vdss_snap <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_dss_snap_customers_by_year"))
+vocs <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_ocs_services_by_year where program_year = 2016"))
+vdoe <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_doe_unique_student_listings"))
+vdoe_vpip <- data.table::setDT(DBI::dbGetQuery(con, "select * from q4_doe_vpi_plus"))
 
 vocs_unq <- vocs[, .N, by = list(unique_id)][order(-N), .(unique_id, service_records = N)]
 vdoe_unq <- unique(vdoe[school_year==2016, .(unique_id, associated_id, school_year)])
