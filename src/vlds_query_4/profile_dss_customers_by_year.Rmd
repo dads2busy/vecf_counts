@@ -7,11 +7,16 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 library(magrittr)
 R.utils::sourceDirectory("~/git/vecf_counts/src/functions/")
-# source(file = "src/functions/fix_column_names.R")
-# source(file = "src/functions/is_blank.R")
+source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
+source(file = "~/git/vecf_counts/src/functions/is_blank.R")
 
 cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
 
+values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+dict_summary <- values %>% 
+  dplyr::filter(agency_name == "Department of Social Services") %>% 
+  dplyr::group_by(view_name, column_name) %>% 
+  dplyr::summarise(n = n())
 
 ```
 
@@ -39,9 +44,9 @@ unq_count_age_type_code <- nrow(unique(cust_by_yr[, .(age_type_code)]))
 unq_count_month_of_birth <- nrow(unique(cust_by_yr[, .(month_of_birth)]))
 unq_count_year_of_birth <- nrow(unique(cust_by_yr[, .(year_of_birth)]))
 #.. valid values ----
-pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_class_code == "90", .N]) / nrow(cust_by_yr)
-pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|age_group_code == "90", .N]) / nrow(cust_by_yr)
-pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_type_code == "90", .N]) / nrow(cust_by_yr)
+pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|!age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
 invalid_month <- c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")
 pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!month_of_birth %in% invalid_month, .N]) / nrow(cust_by_yr)
 pct_valid_values_year_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(year_of_birth)|!as.integer(year_of_birth) >= 1900, .N]) / nrow(cust_by_yr) 
@@ -144,6 +149,16 @@ knitr::kable(reshape2::recast(IDeval, Column~Measure))
 
 #####Age Columns
 
+For reference: the age column values & meanings
+
+```{r agedict, echo = TRUE}
+age_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Age")]
+#age_dict[ , 3:5]
+knitr::kable(age_dict[ , 2:5])
+```
+
+
+
 ```{r Age, echo = FALSE}
 AGEeval <- 
   rbind(
@@ -169,6 +184,13 @@ knitr::kable(reshape2::recast(AGEeval, Column~Measure))
 
 #####School Type
 
+For reference: the school type values & meanings
+
+```{r schdict, echo=TRUE}
+sch_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Sch")]
+knitr::kable(sch_dict[,2:5])
+```
+
 ```{r school, echo = FALSE}
 SCHeval <- tibble::tibble("Column" = "School Type", "Measure" = c("% Complete", "# Unique", "% Valid "), 
                           "Value" = c(pct_complete_school_type, unq_count_school_type, pct_valid_values_sch_type))
@@ -178,6 +200,13 @@ knitr::kable(reshape2::recast(SCHeval, Column~Measure))
 
 #####Ethnicity
 
+For reference: the school type values & meanings
+
+```{r ethdict, echo=TRUE}
+eth_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Eth")]
+knitr::kable(eth_dict[,2:5])
+```
+
 ```{r ethnicity, echo=FALSE}
 ETHeval <- tibble::tibble("Column" = "Ethnicity", "Measure" = c("% Complete", "# Unique", "% Valid "), 
                           "Value" = c(pct_complete_ethnicity, unq_count_ethnicity, pct_valid_values_ethnicity))
@@ -186,6 +215,13 @@ knitr::kable(reshape2::recast(ETHeval, Column~Measure))
 
 #####Gender
 
+For reference: the school type values & meanings
+
+```{r genddict, echo=TRUE}
+gend_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Gend")]
+knitr::kable(gend_dict[,2:5])
+```
+
 ``` {r gender, echo =FALSE}
 GENDeval <- tibble::tibble("Column" = "Gender", "Measure" = c("% Complete", "# Unique", "% Valid "), 
                           "Value" = c(pct_complete_gender, unq_count_gender, pct_valid_values_gender))
@@ -193,6 +229,13 @@ knitr::kable(reshape2::recast(GENDeval, Column~Measure))
 ```
 
 #####Race
+
+For reference: the race type values & meanings. FYI - these should have Y's for Yes response. There have been no 0's in the data, and there are Y's. 
+
+```{r racedict, echo=TRUE}
+race_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Cust")]
+knitr::kable(race_dict[,2:5])
+```
 
 ```{r race, echo = FALSE}
 RACEeval <- 
@@ -220,6 +263,13 @@ knitr::kable(reshape2::recast(RACEeval, Column~Measure))
 ```
 
 #####Service Indicators
+
+For reference: the services values & meanings. Technically the Foster Definition comes from a different view - but the values should be the same. 
+
+```{r servdict, echo=TRUE}
+serv_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "SNAP Case")|stringr::str_detect(column_name, "TANF Case")|stringr::str_detect(column_name, "Foster Care Indicator")]
+knitr::kable(serv_dict[,2:5])
+```
 
 ```{r serviceind, echo=FALSE}
 SERVICEINDeval <-

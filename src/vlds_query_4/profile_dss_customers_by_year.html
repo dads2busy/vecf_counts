@@ -150,6 +150,214 @@ $(document).ready(function () {
 </div>
 <div id="age-columns" class="section level5">
 <h5>Age Columns</h5>
+<p>For reference: the age column values &amp; meanings</p>
+<pre class="r"><code>age_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;Age&quot;)]
+#age_dict[ , 3:5]
+knitr::kable(age_dict[ , 2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Class Code</td>
+<td align="left">1</td>
+<td align="left">Child</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Class Code</td>
+<td align="left">2</td>
+<td align="left">Adult</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Class Code</td>
+<td align="left">90</td>
+<td align="left">Not valid</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Class Code</td>
+<td align="left">91</td>
+<td align="left">Source blank</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">1</td>
+<td align="left">0 - 11 months</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">2</td>
+<td align="left">12-17 months</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">3</td>
+<td align="left">18-23 months</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">4</td>
+<td align="left">2-3 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">5</td>
+<td align="left">4-5 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">6</td>
+<td align="left">6-17 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">7</td>
+<td align="left">18 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">8</td>
+<td align="left">19-21 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">9</td>
+<td align="left">22-24 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">10</td>
+<td align="left">25-34 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">11</td>
+<td align="left">35-44 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">12</td>
+<td align="left">45-49 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">13</td>
+<td align="left">50-54 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">14</td>
+<td align="left">55-59 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">15</td>
+<td align="left">60-64 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">16</td>
+<td align="left">65-74 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">17</td>
+<td align="left">75-84 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">18</td>
+<td align="left">85 or older</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">90</td>
+<td align="left">Not valid</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Group Code</td>
+<td align="left">91</td>
+<td align="left">Source blank</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">1</td>
+<td align="left">Under 6 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">2</td>
+<td align="left">6 yrs or older</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">3</td>
+<td align="left">18-49 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">4</td>
+<td align="left">50-59 yrs</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">5</td>
+<td align="left">60-64 yrs</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">6</td>
+<td align="left">65 yrs or older</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">90</td>
+<td align="left">Not valid</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Age Type Code</td>
+<td align="left">91</td>
+<td align="left">Source blank</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -164,19 +372,19 @@ $(document).ready(function () {
 <td align="left">Age Class</td>
 <td align="right">3</td>
 <td align="right">1</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="even">
 <td align="left">Age Group</td>
 <td align="right">19</td>
 <td align="right">1</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="odd">
 <td align="left">Age Type</td>
 <td align="right">7</td>
 <td align="right">1</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="even">
 <td align="left">Month of Birth</td>
@@ -195,6 +403,105 @@ $(document).ready(function () {
 </div>
 <div id="school-type" class="section level5">
 <h5>School Type</h5>
+<p>For reference: the school type values &amp; meanings</p>
+<pre class="r"><code>sch_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;Sch&quot;)]
+knitr::kable(sch_dict[,2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">0</td>
+<td align="left">Source blank</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">1</td>
+<td align="left">Preschool/daycare program</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">2</td>
+<td align="left">High school</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">3</td>
+<td align="left">Middle/junior high school</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">4</td>
+<td align="left">Elementary school</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">5</td>
+<td align="left">Voc/Tech/Trade school</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">6</td>
+<td align="left">Non-credit college courses</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">7</td>
+<td align="left">On the job training</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">8</td>
+<td align="left">Post high school/training program</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">9</td>
+<td align="left">Correspondence school</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">10</td>
+<td align="left">GED General education diploma</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">11</td>
+<td align="left">Undergrad/Inst of higher learning</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">12</td>
+<td align="left">Graduate/Inst of higher learning</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">School Type Code</td>
+<td align="left">90</td>
+<td align="left">90 - Not valid</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -216,6 +523,39 @@ $(document).ready(function () {
 </div>
 <div id="ethnicity" class="section level5">
 <h5>Ethnicity</h5>
+<p>For reference: the school type values &amp; meanings</p>
+<pre class="r"><code>eth_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;Eth&quot;)]
+knitr::kable(eth_dict[,2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Ethnicity Code</td>
+<td align="left">0</td>
+<td align="left">Not Reported</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Ethnicity Code</td>
+<td align="left">1</td>
+<td align="left">HISPANIC OR LATINO</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Ethnicity Code</td>
+<td align="left">2</td>
+<td align="left">NOT HISPANIC OR LATINO</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -237,6 +577,39 @@ $(document).ready(function () {
 </div>
 <div id="gender" class="section level5">
 <h5>Gender</h5>
+<p>For reference: the school type values &amp; meanings</p>
+<pre class="r"><code>gend_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;Gend&quot;)]
+knitr::kable(gend_dict[,2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Gender Code</td>
+<td align="left">0</td>
+<td align="left">Not Reported</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Gender Code</td>
+<td align="left">1</td>
+<td align="left">Female</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Gender Code</td>
+<td align="left">2</td>
+<td align="left">Male</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -258,6 +631,99 @@ $(document).ready(function () {
 </div>
 <div id="race" class="section level5">
 <h5>Race</h5>
+<p>For reference: the race type values &amp; meanings. FYI - these should have Y’s for Yes response. There have been no 0’s in the data, and there are Y’s.</p>
+<pre class="r"><code>race_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;Cust&quot;)]
+knitr::kable(race_dict[,2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Cust race is Amer Indian/Alaska Native Ind</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Cust race is Amer Indian/Alaska Native Ind</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Cust race is Hawaiian/Pacific Islander ind</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Cust race is Hawaiian/Pacific Islander ind</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Asisan indicator</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Asisan indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Black indicator</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Black indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Black indicator</td>
+<td align="left">Y</td>
+<td align="left">Yes</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Other indicator</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is Other indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is White indicator</td>
+<td align="left">0</td>
+<td align="left">Null</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">Customer race is White indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -309,6 +775,57 @@ $(document).ready(function () {
 </div>
 <div id="service-indicators" class="section level5">
 <h5>Service Indicators</h5>
+<p>For reference: the services values &amp; meanings. Technically the Foster Definition comes from a different view - but the values should be the same.</p>
+<pre class="r"><code>serv_dict &lt;- values[agency_name == &quot;Department of Social Services&quot;][stringr::str_detect(column_name, &quot;SNAP Case&quot;)|stringr::str_detect(column_name, &quot;TANF Case&quot;)|stringr::str_detect(column_name, &quot;Foster Care Indicator&quot;)]
+knitr::kable(serv_dict[,2:5])</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">view_name</th>
+<th align="left">column_name</th>
+<th align="left">value</th>
+<th align="left">description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">SNAP Case Indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">SNAP Case Indicator</td>
+<td align="left">Y</td>
+<td align="left">Yes</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS Customers By Year</td>
+<td align="left">TANF Case indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+<tr class="even">
+<td align="left">DSS Customers By Year</td>
+<td align="left">TANF Case indicator</td>
+<td align="left">Y</td>
+<td align="left">Yes</td>
+</tr>
+<tr class="odd">
+<td align="left">DSS FOSTER CARE CUSTOMER By Year</td>
+<td align="left">Title IV-E Foster Care Indicator</td>
+<td align="left">Y</td>
+<td align="left">Yes</td>
+</tr>
+<tr class="even">
+<td align="left">DSS FOSTER CARE CUSTOMER By Year</td>
+<td align="left">Title IV-E Foster Care Indicator</td>
+<td align="left">N</td>
+<td align="left">No</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr class="header">
@@ -363,19 +880,19 @@ $(document).ready(function () {
 <td align="left">Age Class</td>
 <td align="right">3</td>
 <td align="right">1.0000000</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="even">
 <td align="left">Age Group</td>
 <td align="right">19</td>
 <td align="right">1.0000000</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="odd">
 <td align="left">Age Type</td>
 <td align="right">7</td>
 <td align="right">1.0000000</td>
-<td align="center">0.9999960</td>
+<td align="center">0.0000040</td>
 </tr>
 <tr class="even">
 <td align="left">Ethnicity</td>
