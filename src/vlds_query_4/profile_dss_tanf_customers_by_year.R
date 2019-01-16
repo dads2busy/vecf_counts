@@ -69,3 +69,16 @@ pct_valid_values_calendar_year_number <- (nrow(cust_by_yr) - cust_by_yr[!calenda
 # a location column also needs to be included (e.g. county_fips_code) when checking for duplication
 duplicated_entries <-  cust_by_yr[, .N, by = .(unique_id, calendar_year_number, county_fips_code)][N>1, .(unique_id)]
 pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+
+IDeval <- tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                         "Value" = c(scales::percent(pct_complete_unique_id), unq_count_unique_id, scales::percent(pct_valid_values_unique_id)))
+FIPSeval <- tibble::tibble("Column" = "FIPS", "Measure" = c("% Complete", "# Unique", "% Valid", "% Same/Yr"), 
+                           "Value" = c(scales::percent(pct_complete_county_fips_code), unq_count_county_fips_code, scales::percent(pct_valid_values_county_fips_code), scales::percent(pct_cust_no_chng_county_fips_code)))
+ZIPeval <- tibble::tibble("Column" = "ZIP", "Measure" = c("% Complete", "# Unique", "% Valid", "% Same/Yr", "Zip-Fip Match"), 
+                          "Value" = c(scales::percent(pct_complete_zip_code), unq_count_zip_code, scales::percent(pct_valid_values_zip_code), scales::percent(pct_cust_no_chng_zip_code), scales::percent(pct_fips_zip_agreement)))
+Caleval <- tibble::tibble("Column" = "CALYR", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(scales::percent(pct_complete_calendar_year_number), unq_count_calendar_year_number, scales::percent(pct_valid_values_calendar_year_number)))
+Overall <- tibble::tibble("Column" = "Dupes", "Measure" = "% Non-Dupes", 
+                          "Value" = scales::percent(pct_unduplicated_entries))
+SummaryEval <- rbind(IDeval, FIPSeval, ZIPeval, Caleval, Overall)
+SummaryEval
