@@ -132,6 +132,17 @@ Total number of records is:
 print(nrow(cust_by_yr))
 ```
 
-Since there are 135 unique IDs - no need to check persistence of traits for the duplicates? 
+Since there are 135 unique IDs - there are 0 duplicates. 
+
+
+The percent unduplication rate is: 
+```{r, echo = FALSE}
+duplicated_entries <- cust_by_yr[, .N, by = .(unique_id)][N>1, .(unique_id)] 
+# 0 duplicates
+pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+pct_unduplicated_entries
+```
+
+
 
 

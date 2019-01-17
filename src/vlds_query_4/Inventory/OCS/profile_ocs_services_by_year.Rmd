@@ -14,12 +14,13 @@ cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/origina
 values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
 ```
 
+####Notes: 
 
-match_type - missing in metadata, 100% of records have value "D"
-Skipping associated_id
-program year only 2016 
-service duration - days? 
-note all values represent some type of service - are we distinguishing at all? 
+* I skipped [match_type] and [associated_id].  
++ match_type - missing in metadata, 100% of records have value "D"
++ associated_id - assuming this is an internal id?, 100% populated
+* program year only 2016 
+* service duration - this looks like a number reflecting days but potentially unclear and no entry in dictionary
 
 ```{r columns, echo=FALSE}
 #. unique_id ----
@@ -39,9 +40,9 @@ unq_count_clin_med <- nrow(unique(cust_by_yr[, .(clinical_medication)]))
 unq_count_dsmiv <- nrow(unique(cust_by_yr[, .(dsmiv)]))
 unq_count_medicaid <- nrow(unique(cust_by_yr[, .(medicaid_enrolled)]))
 #.. valid values ----
-pct_valid_values_clin_med <- (nrow(cust_by_yr) - cust_by_yr[is_blank(clinical_medication), .N]) / nrow(cust_by_yr)
-pct_valid_values_dsmiv <- (nrow(cust_by_yr) - cust_by_yr[is_blank(dsmiv), .N]) / nrow(cust_by_yr)
-pct_valid_values_medicaid <- (nrow(cust_by_yr) - cust_by_yr[is_blank(medicaid_enrolled), .N]) / nrow(cust_by_yr)
+pct_valid_values_clin_med <- (nrow(cust_by_yr) - cust_by_yr[!clinical_medication %in% c("1", "2"), .N]) / nrow(cust_by_yr)
+pct_valid_values_dsmiv <- (nrow(cust_by_yr) - cust_by_yr[!dsmiv %in% c("1", "2"), .N]) / nrow(cust_by_yr)
+pct_valid_values_medicaid <- (nrow(cust_by_yr) - cust_by_yr[!medicaid_enrolled %in% c("1", "2"), .N]) / nrow(cust_by_yr)
 
 #. date columns - program year, servoce begin date, service end date ----
 pct_complete_prog_yr <- (nrow(cust_by_yr) - cust_by_yr[is_blank(program_year), .N]) / nrow(cust_by_yr)
@@ -52,12 +53,12 @@ unq_count_prog_yr <- nrow(unique(cust_by_yr[, .(program_year)]))
 unq_count_serv_begin <- nrow(unique(cust_by_yr[, .(service_begin_date)]))
 unq_count_serv_end <- nrow(unique(cust_by_yr[, .(service_end_date)]))
 #.. valid values ----
-pct_valid_values_prog_yr <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(program_year) %in% 2013:2016, .N]) / nrow(cust_by_yr)
+pct_valid_values_prog_yr <- (nrow(cust_by_yr) - cust_by_yr[as.integer(program_year) < 2013, .N]) / nrow(cust_by_yr)
 pct_valid_values_serv_beg <- (nrow(cust_by_yr) - 
-                               cust_by_yr[!stringr::str_sub(cust_by_yr$service_begin_date, start = 7L, end = 10L) %in% 2013:2016, .N]) / 
+                               cust_by_yr[stringr::str_sub(cust_by_yr$service_begin_date, start = 7L, end = 10L) < 2013, .N]) / 
                                 nrow(cust_by_yr)
 pct_valid_values_serv_end <- (nrow(cust_by_yr) - 
-                               cust_by_yr[!stringr::str_sub(cust_by_yr$service_end_date, start = 7L, end = 10L) %in% 2013:2016, .N]) / 
+                               cust_by_yr[stringr::str_sub(cust_by_yr$service_end_date, start = 7L, end = 10L) < 2013, .N]) / 
                               nrow(cust_by_yr)
 
 #. service columns - service duration, service placement ----
@@ -67,31 +68,20 @@ pct_complete_serv_place <- (nrow(cust_by_yr) - cust_by_yr[is_blank(service_place
 unq_count_serv_dur <- nrow(unique(cust_by_yr[, .(service_duration)]))
 unq_count_serv_place <- nrow(unique(cust_by_yr[, .(service_placement_type)]))
 #.. valid values ----
-pct_valid_values_serv_dur <- (nrow(cust_by_yr) - cust_by_yr[is_blank(service_duration), .N]) / nrow(cust_by_yr)
-pct_valid_values_serv_place <- (nrow(cust_by_yr) - cust_by_yr[is_blank(service_placement_type), .N]) / nrow(cust_by_yr)
+pct_valid_values_serv_dur <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(service_duration) < 1, .N]) / nrow(cust_by_yr)
+pct_valid_values_serv_place <- (nrow(cust_by_yr) - cust_by_yr[is_blank(service_placement_type)|as.numeric(service_placement_type) <1, .N]) / nrow(cust_by_yr)
 
 
 ```
 
 
-### Column Profiles
-
-#####Unique IDs
 
 ```{r UniqueID, echo = FALSE}
-IDeval <- tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                         "Value" = c(pct_complete_unique_id, 
-                                     unq_count_unique_id, pct_valid_values_unique_id))
-
-knitr::kable(reshape2::recast(IDeval, Column~Measure))
-```
-
-#####Indicator Columns
-
-```{r Age, echo = FALSE}
-
-Indeval <- 
+SummaryEval <- 
   rbind(
+  tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                         "Value" = c(pct_complete_unique_id, 
+                                     unq_count_unique_id, pct_valid_values_unique_id)),
     tibble::tibble("Column" = "Medication", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_clin_med, 
                                unq_count_clin_med, pct_valid_values_clin_med)),
@@ -100,17 +90,7 @@ Indeval <-
                            unq_count_dsmiv, pct_valid_values_dsmiv)),
     tibble::tibble("Column" = "Medicaid", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_medicaid, 
-                               unq_count_medicaid, pct_valid_values_medicaid))
-    ) #rbind  
-
-knitr::kable(reshape2::recast(Indeval, Column~Measure))
-```
-
-#####Date Columns
-
-```{r school, echo = FALSE}
-DATEeval <- 
-  rbind(
+                               unq_count_medicaid, pct_valid_values_medicaid)),
     tibble::tibble("Column" = "Program Year", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_prog_yr, unq_count_prog_yr, 
                                pct_valid_values_prog_yr)),
@@ -119,25 +99,7 @@ DATEeval <-
                                pct_valid_values_serv_beg)),
     tibble::tibble("Column" = "Service End", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_serv_end, unq_count_serv_end, 
-                               pct_valid_values_serv_end))
-  ) #rbind
-
-knitr::kable(reshape2::recast(DATEeval, Column~Measure))
-```
-
-#####Service Indicators
-
-For reference: the services values & meanings. Technically the Foster Definition comes from a different view - but the values should be the same. 
-
-```{r servdict, echo=TRUE}
-serv_dict <- values[view_name == "OCS Services By Year"][stringr::str_detect(column_name, "Service Placement")]
-knitr::kable(serv_dict[,2:5])
-```
-
-```{r serviceind, echo=FALSE}
-
-SERVICEINDeval <-
-  rbind(
+                               pct_valid_values_serv_end)),
     tibble::tibble("Column" = "Duration", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_serv_dur, unq_count_serv_dur, 
                                pct_valid_values_serv_dur)),
@@ -145,19 +107,46 @@ SERVICEINDeval <-
                    "Value" = c(pct_complete_serv_place, unq_count_serv_place, 
                                pct_valid_values_serv_place))
   ) #rbind
-knitr::kable(reshape2::recast(SERVICEINDeval, Column~Measure))
+
 ```
 
 ### Summary Table
 
-```{R}
-SummaryEval <- rbind(IDeval, Indeval, DATEeval, SERVICEINDeval)
+```{R, echo = FALSE}
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 ```
 
+####Validations: 
+* unique_id - filtered for nchar = 7
+* clinical_medication - filtered for values 1 and 2
+* dsmiv  - filtered for values 1 and 2
+* medicaid_enrolled  - filtered for values 1 and 2
+* program_year - filtered for years after 2013 (but not meaningful - all records are 2016)
+* service_begin_date - filtered for years after 2013 (but not meaningful - all records are 2015-2016)
+* service_duration - filtered out duration less than 1
+* service_end_date - filtered for years after 2013 (but not meaningful - all records are 2015-2016)
+* service_placement_type - filtered out blanks and values less than 1 
 
 
 
+####Longitudinal checks
+
+Total number of records is:
+
+```{r, echo = FALSE}
+print(nrow(cust_by_yr))
+```
+
+Since there are 9598 unique IDs - need to check persistence of traits for the duplicates. There don't seem to be demographic columns to check. All other columns could presumably change? Not sure how to proceed. There are 4241 duplicates. 
+
+The percent unduplication rate is: 
+```{r, echo = FALSE}
+duplicated_entries <- cust_by_yr[, .N, by = .(unique_id)][N>1, .(unique_id)] 
+# 4241 duplicates
+# no demographic columns to check whether same person or not
+pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+pct_unduplicated_entries
+```
 
 
 

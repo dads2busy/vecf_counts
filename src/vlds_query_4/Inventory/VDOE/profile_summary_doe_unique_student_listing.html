@@ -137,8 +137,6 @@ $(document).ready(function () {
 </div>
 <div id="summary-table" class="section level3">
 <h3>Summary Table</h3>
-<p>Total number of records is:</p>
-<pre><code>## [1] 135</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -199,7 +197,7 @@ $(document).ready(function () {
 </tr>
 <tr class="odd">
 <td align="left">School No</td>
-<td align="right">4</td>
+<td align="right">78</td>
 <td align="right">1.0000000</td>
 <td align="center">0.962963</td>
 </tr>
@@ -225,6 +223,14 @@ $(document).ready(function () {
 <li>race_type - filtered out value “0” indicating race unknown (note value 99 representing multiple race came into use in 2010-2011)</li>
 <li>division_number_reporting_school_numbe - filtered for codes appearing in the dictionary</li>
 </ul>
+</div>
+<div id="longitudinal-checks" class="section level4">
+<h4>Longitudinal checks</h4>
+<p>Total number of records is:</p>
+<pre><code>## [1] 135</code></pre>
+<p>Since there are 135 unique IDs - no need to check persistence of traits for the duplicates?</p>
+<p>The percent unduplication rate is:</p>
+<pre><code>## [1] 1</code></pre>
 </div>
 </div>
 

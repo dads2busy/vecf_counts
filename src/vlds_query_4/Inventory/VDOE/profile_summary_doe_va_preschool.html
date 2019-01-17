@@ -132,7 +132,6 @@ $(document).ready(function () {
 </li>
 <li>match_type - missing in metadata, 100% of records have value “D”</li>
 <li>associated_id - assuming this is an internal id?, 100% populated</li>
-<li>…..</li>
 </ul>
 </div>
 <div id="summary-table" class="section level3">
@@ -235,8 +234,9 @@ $(document).ready(function () {
 <h4>Longitudinal checks</h4>
 <p>Total number of records is:</p>
 <pre><code>## [1] 198</code></pre>
-<p>Since there are 135 unique IDs - need to check persistence of traits for the duplicates.</p>
-<p>The percent duplication rate is:</p>
+<p>Since there are 135 unique IDs - need to check persistence of traits for the duplicates. There are 57 duplicates whose traits persist: * birth year * birth month * gender * race/ethnicity</p>
+<p>All other columns could presumably change.</p>
+<p>The percent unduplication rate is:</p>
 <pre><code>## [1] 0.7121212</code></pre>
 </div>
 </div>

@@ -1,5 +1,5 @@
 ---
-title: "Profile DSS Customers"
+title: "DSS - Customers"
 output: html_document
 ---
 
@@ -13,10 +13,6 @@ source(file = "~/git/vecf_counts/src/functions/is_blank.R")
 cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
 
 values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
-dict_summary <- values %>% 
-  dplyr::filter(agency_name == "Department of Social Services") %>% 
-  dplyr::group_by(view_name, column_name) %>% 
-  dplyr::summarise(n = n())
 
 ```
 
@@ -140,28 +136,11 @@ pct_valid_values_cal <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(calender_year
 #####Unique IDs
 
 ```{r UniqueID, echo = FALSE}
-IDeval <- tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                         "Value" = c(pct_complete_unique_id, 
-                                     unq_count_unique_id, pct_valid_values_unique_id))
-
-knitr::kable(reshape2::recast(IDeval, Column~Measure))
-```
-
-#####Age Columns
-
-For reference: the age column values & meanings
-
-```{r agedict, echo = TRUE}
-age_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Age")]
-#age_dict[ , 3:5]
-knitr::kable(age_dict[ , 2:5])
-```
-
-
-
-```{r Age, echo = FALSE}
-AGEeval <- 
+SummaryEval <-
   rbind(
+  tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                         "Value" = c(pct_complete_unique_id, 
+                                     unq_count_unique_id, pct_valid_values_unique_id)),
     tibble::tibble("Column" = "Age Class", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_age_class_code, 
                                unq_count_age_class_code, pct_valid_values_age_class_code)),
@@ -176,70 +155,13 @@ AGEeval <-
                                unq_count_month_of_birth, pct_valid_values_month_of_birth)),
     tibble::tibble("Column" = "Year of Birth", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_year_of_birth, 
-                               unq_count_year_of_birth, pct_valid_values_year_of_birth))
-    ) #rbind  
-
-knitr::kable(reshape2::recast(AGEeval, Column~Measure))
-```
-
-#####School Type
-
-For reference: the school type values & meanings
-
-```{r schdict, echo=TRUE}
-sch_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Sch")]
-knitr::kable(sch_dict[,2:5])
-```
-
-```{r school, echo = FALSE}
-SCHeval <- tibble::tibble("Column" = "School Type", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_school_type, unq_count_school_type, pct_valid_values_sch_type))
-
-knitr::kable(reshape2::recast(SCHeval, Column~Measure))
-```
-
-#####Ethnicity
-
-For reference: the school type values & meanings
-
-```{r ethdict, echo=TRUE}
-eth_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Eth")]
-knitr::kable(eth_dict[,2:5])
-```
-
-```{r ethnicity, echo=FALSE}
-ETHeval <- tibble::tibble("Column" = "Ethnicity", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_ethnicity, unq_count_ethnicity, pct_valid_values_ethnicity))
-knitr::kable(reshape2::recast(ETHeval, Column~Measure))
-```
-
-#####Gender
-
-For reference: the school type values & meanings
-
-```{r genddict, echo=TRUE}
-gend_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Gend")]
-knitr::kable(gend_dict[,2:5])
-```
-
-``` {r gender, echo =FALSE}
-GENDeval <- tibble::tibble("Column" = "Gender", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_gender, unq_count_gender, pct_valid_values_gender))
-knitr::kable(reshape2::recast(GENDeval, Column~Measure))
-```
-
-#####Race
-
-For reference: the race type values & meanings. FYI - these should have Y's for Yes response. There have been no 0's in the data, and there are Y's. 
-
-```{r racedict, echo=TRUE}
-race_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Cust")]
-knitr::kable(race_dict[,2:5])
-```
-
-```{r race, echo = FALSE}
-RACEeval <- 
-  rbind(
+                               unq_count_year_of_birth, pct_valid_values_year_of_birth)),
+    tibble::tibble("Column" = "School Type", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_school_type, unq_count_school_type, pct_valid_values_sch_type)),
+    tibble::tibble("Column" = "Ethnicity", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_ethnicity, unq_count_ethnicity, pct_valid_values_ethnicity)),
+    tibble::tibble("Column" = "Gender", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_gender, unq_count_gender, pct_valid_values_gender)),
     tibble::tibble("Column" = "Race: Amer Ind", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_race_amer_ind, unq_count_race_amer_ind, 
                                pct_valid_values_race_amer_ind)),
@@ -257,23 +179,7 @@ RACEeval <-
                                pct_valid_values_race_other)),
     tibble::tibble("Column" = "Race: White", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_race_white, unq_count_race_white, 
-                               pct_valid_values_race_white))
-  ) #rbind
-knitr::kable(reshape2::recast(RACEeval, Column~Measure))
-```
-
-#####Service Indicators
-
-For reference: the services values & meanings. Technically the Foster Definition comes from a different view - but the values should be the same. 
-
-```{r servdict, echo=TRUE}
-serv_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "SNAP Case")|stringr::str_detect(column_name, "TANF Case")|stringr::str_detect(column_name, "Foster Care Indicator")]
-knitr::kable(serv_dict[,2:5])
-```
-
-```{r serviceind, echo=FALSE}
-SERVICEINDeval <-
-  rbind(
+                               pct_valid_values_race_white)),
     tibble::tibble("Column" = "Foster", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_foster, unq_count_foster, 
                                pct_valid_values_foster)),
@@ -287,13 +193,13 @@ SERVICEINDeval <-
                    "Value" = c(pct_complete_cal, unq_count_cal, 
                                pct_valid_values_cal))
   ) #rbind
-knitr::kable(reshape2::recast(SERVICEINDeval, Column~Measure))
+
 ```
 
 ### Summary Table
 
 ```{R}
-SummaryEval <- rbind(IDeval, AGEeval, SCHeval, ETHeval, RACEeval, GENDeval, SERVICEINDeval)
+
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 ```
 

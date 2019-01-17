@@ -21,7 +21,6 @@ colnames(cust_by_yr)
 * I skipped [match_type] and [associated_id].  
 + match_type - missing in metadata, 100% of records have value "D"
 + associated_id - assuming this is an internal id?, 100% populated
-* .....
 
 ```{r columns, echo=FALSE, warning=FALSE}
 #. unique_id ----
@@ -143,7 +142,13 @@ Total number of records is:
 print(nrow(cust_by_yr))
 ```
 
-Since there are 135 unique IDs - need to check persistence of traits for the duplicates. 
+Since there are 135 unique IDs - need to check persistence of traits for the duplicates. There are 57 duplicates whose traits persist: 
+* birth year
+* birth month
+* gender
+* race/ethnicity
+
+All other columns could presumably change. 
 
 The percent unduplication rate is: 
 ```{r, echo = FALSE}
