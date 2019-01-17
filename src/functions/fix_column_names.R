@@ -1,4 +1,10 @@
 fix_column_names <- function(dt) {
-  colnames(dt) <- gsub("\\.", "_", tolower(make.names(colnames(dt), unique = T, allow_ = T)))
+  names <- colnames(dt)
+  names <- tolower(names)
+  names <- gsub("'", "", names)
+  names <- gsub("[[:punct:] ]", "_", names)
+  names <- gsub("_+", "_", names)
+  names <- make.unique(names, sep = "_")
+  colnames(dt) <- names
   dt
 }
