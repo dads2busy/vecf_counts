@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 library(magrittr)
 R.utils::sourceDirectory("~/git/vecf_counts/src/functions/")
 source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")

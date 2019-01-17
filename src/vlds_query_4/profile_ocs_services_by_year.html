@@ -130,7 +130,6 @@ $(document).ready(function () {
 <h3>Column Profiles</h3>
 <div id="unique-ids" class="section level5">
 <h5>Unique IDs</h5>
-<pre><code>## Using Column, Measure as id variables</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -152,7 +151,6 @@ $(document).ready(function () {
 </div>
 <div id="indicator-columns" class="section level5">
 <h5>Indicator Columns</h5>
-<pre><code>## Using Column, Measure as id variables</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -186,7 +184,6 @@ $(document).ready(function () {
 </div>
 <div id="date-columns" class="section level5">
 <h5>Date Columns</h5>
-<pre><code>## Using Column, Measure as id variables</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -343,7 +340,6 @@ knitr::kable(serv_dict[,2:5])</code></pre>
 </tr>
 </tbody>
 </table>
-<pre><code>## Using Column, Measure as id variables</code></pre>
 <table>
 <thead>
 <tr class="header">
@@ -374,7 +370,6 @@ knitr::kable(serv_dict[,2:5])</code></pre>
 <h3>Summary Table</h3>
 <pre class="r"><code>SummaryEval &lt;- rbind(IDeval, Indeval, DATEeval, SERVICEINDeval)
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))</code></pre>
-<pre><code>## Using Column, Measure as id variables</code></pre>
 <table>
 <thead>
 <tr class="header">
