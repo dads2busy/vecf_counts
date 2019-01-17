@@ -64,7 +64,7 @@ pct_complete_sch_num <- (nrow(cust_by_yr) - cust_by_yr[is_blank(division_number_
 unq_count_sch_yr <- nrow(unique(cust_by_yr[, .(school_year)]))
 unq_count_entry <- nrow(unique(cust_by_yr[, .(entry_date)]))
 unq_count_grade <- nrow(unique(cust_by_yr[, .(grade_code)]))
-unq_count_sch_num <- nrow(unique(cust_by_yr[, .(school_year)]))
+unq_count_sch_num <- nrow(unique(cust_by_yr[, .(division_number_reporting_school_numbe)]))
 #.. valid values ----
 pct_valid_values_sch_yr <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(school_year) < 2013, .N]) / nrow(cust_by_yr)
 pct_valid_values_entry <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(stringr::str_sub(entry_date, start = 1L, end = 4L)) <2013, .N]) / nrow(cust_by_yr)
@@ -109,7 +109,6 @@ SummaryEval <-
 ### Summary Table
 
 ```{R, echo = FALSE}
-
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 ```
 
@@ -125,6 +124,14 @@ knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 * race_type - filtered out value "0" indicating race unknown (note value 99 representing multiple race came into use in 2010-2011)
 * division_number_reporting_school_numbe - filtered for codes appearing in the dictionary
 
+####Longitudinal checks
 
+Total number of records is:
+
+```{r, echo = FALSE}
+print(nrow(cust_by_yr))
+```
+
+Since there are 135 unique IDs - no need to check persistence of traits for the duplicates? 
 
 
