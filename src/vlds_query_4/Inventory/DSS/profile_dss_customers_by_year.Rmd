@@ -11,11 +11,13 @@ source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
 source(file = "~/git/vecf_counts/src/functions/is_blank.R")
 
 cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
-
 values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
 
 ```
 
+####Notes: 
+
+* I skipped [study_group_id]
 
 ```{r columns, echo=FALSE}
 #. unique_id ----
@@ -43,10 +45,8 @@ unq_count_year_of_birth <- nrow(unique(cust_by_yr[, .(year_of_birth)]))
 pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
 pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|!age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
 pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-invalid_month <- c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")
-pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!month_of_birth %in% invalid_month, .N]) / nrow(cust_by_yr)
+pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!as.numeric(month_of_birth) %in% c(1:12), .N]) / nrow(cust_by_yr)
 pct_valid_values_year_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(year_of_birth)|!as.integer(year_of_birth) >= 1900, .N]) / nrow(cust_by_yr) 
-
 
 #. school type ----
 pct_complete_school_type <- (nrow(cust_by_yr) - cust_by_yr[is_blank(school_type_code), .N]) / nrow(cust_by_yr)
@@ -61,8 +61,8 @@ pct_complete_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[is_blank(ethnicity_code
 #.. unique value count ----
 unq_count_ethnicity <- nrow(unique(cust_by_yr[, .(ethnicity_code)]))
 #.. valid values ----
-invalid_eth <- c("0", "3", "90", "93")
-pct_valid_values_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[ethnicity_code %in% invalid_eth, .N]) / nrow(cust_by_yr)
+valid_eth <- values[agency_name == "Department of Social Services"][view_name == "DSS Customers By Year"][column_name == "Ethnicity Code"][,value]
+pct_valid_values_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[!ethnicity_code %in% valid_eth|ethnicity_code=="0", .N]) / nrow(cust_by_yr)
 
 #. gender ----
 pct_complete_gender <- (nrow(cust_by_yr) - cust_by_yr[is_blank(gender_code), .N]) / nrow(cust_by_yr)
@@ -88,12 +88,12 @@ unq_count_race_pacific <- nrow(unique(cust_by_yr[, .(cust_race_is_hawaiian_pacif
 unq_count_race_other <- nrow(unique(cust_by_yr[, .(customer_race_is_other_indicator)]))
 unq_count_race_white <- nrow(unique(cust_by_yr[, .(customer_race_is_white_indicator)]))
 #.. valid values ----
-pct_valid_values_race_amer_ind <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(cust_race_is_amer_indian_alaska_native_ind)])) / nrow(cust_by_yr)
-pct_valid_values_race_asian <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_asisan_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_black <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_black_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_pacific <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(cust_race_is_hawaiian_pacific_islander_ind)])) / nrow(cust_by_yr)
-pct_valid_values_race_other <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_other_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_white <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_white_indicator)])) / nrow(cust_by_yr)
+pct_valid_values_race_amer_ind <- (nrow(cust_by_yr) - nrow(cust_by_yr[!cust_race_is_amer_indian_alaska_native_ind %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_asian <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_asisan_indicator %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_black <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_black_indicator %in% c("N", "Y")]))/ nrow(cust_by_yr)
+pct_valid_values_race_pacific <- (nrow(cust_by_yr) - nrow(cust_by_yr[!cust_race_is_hawaiian_pacific_islander_ind %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_other <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_other_indicator%in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_white <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_white_indicator %in% c("N", "Y")])) / nrow(cust_by_yr)
 
 
 #. foster indicator ----
@@ -123,17 +123,10 @@ pct_complete_cal <- (nrow(cust_by_yr) - cust_by_yr[is_blank(calender_year_number
 #.. unique value count ----
 unq_count_cal <- nrow(unique(cust_by_yr[, .(calender_year_number)]))
 #.. valid values ----
-pct_valid_values_cal <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(calender_year_number) %in% 2013:2016, .N]) / nrow(cust_by_yr)
-
-
-
+pct_valid_values_cal <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(calender_year_number) < 2013, .N]) / nrow(cust_by_yr)
 
 ```
 
-
-### Column Profiles
-
-#####Unique IDs
 
 ```{r UniqueID, echo = FALSE}
 SummaryEval <-
@@ -199,9 +192,63 @@ SummaryEval <-
 ### Summary Table
 
 ```{R}
-
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 ```
+
+
+####Validations: 
+* unique_id - filtered for nchar = 7 
+* age_class_code - filtered out values 90 (not valid) and 91 (source blank) 
+* age_group_code - filtered out values 90 and 91
+* age_type_code  - filtered out values 90 and 91
+* month_of_birth - filtered out blanks and values other than 1:12
+* year_of_birth  - filtered out values before 1900
+* school_type_code - filtered out school type 0 (source blank)   
+* ethnicity_code - filtered out values that do not appear in the dictionary (3, 90, 93) and value 0 (source blank)
+* foster_care_case_indicator - filtered out values other than "N" and "Y"
+* gender_code  - filtered out values other than "1" (femal) and "2" (male)
+* cust_race_is_amer_indian_alaska_native_ind - filtered out values other than "N" and "Y"
+* customer_race_is_asisan_indicator  - filtered out values other than "N" and "Y"
+* customer_race_is_black_indicator  - filtered out values other than "N" and "Y"
+* cust_race_is_hawaiian_pacific_islander_ind - filtered out values other than "N" and "Y"
+* customer_race_is_other_indicator  - filtered out values other than "N" and "Y"
+* customer_race_is_white_indicator  - filtered out values other than "N" and "Y"
+* snap_case_indicator - filtered out values other than "N" and "Y"
+* tanf_case_indicator  - filtered out values other than "N" and "Y"
+* calender_year_number - filtered out values before 2013
+
+####Longitudinal checks
+
+Total number of records is:
+
+```{r, echo = FALSE}
+print(nrow(cust_by_yr))
+```
+
+
+There are 1,325,911 duplicates by unique id
+There are 1,325,867 duplicates by unique id + year of birth
+There are 1,325,844 duplicates by unique id + year of birth + month of birth
+There are 1,325,566 duplicates by unique id + year of birth + month of birth + gender
+There are 1,323,281 duplicates by unique id + year of birth + month of birth + gender + ethnicity
+
+
+Using the smallest level of duplication, the percent unduplication rate is:  
+```{r, echo = FALSE}
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id)][N>1, .(unique_id)] 
+# 1,325,911  duplicates
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code, ethnicity_code)][N>1, .(unique_id)]  
+duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code, ethnicity_code, customer_race_is_black_indicator)][N>1, .(unique_id)]  
+
+pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+pct_unduplicated_entries
+```
+
+
+
 
 
 
