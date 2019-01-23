@@ -1,0 +1,43 @@
+---
+title: "VDSS - Customers - Age Class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(magrittr)
+R.utils::sourceDirectory("~/git/vecf_counts/src/functions/")
+source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
+source(file = "~/git/vecf_counts/src/functions/is_blank.R")
+
+cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
+values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+```
+
+#### Completeness
+
+```{r completeness, echo=FALSE}
+pct_complete_unique_id <- (nrow(cust_by_yr) - cust_by_yr[is_blank(unique_id), .N]) / nrow(cust_by_yr)
+```
+
+#### Uniqueness
+
+You can also embed plots, for example:
+
+```{r uniqueness, echo=FALSE}
+unq_count_age_class_code <- nrow(unique(cust_by_yr[, .(age_class_code)]))
+
+```
+
+#### Record Consistency
+
+```{r consistency, echo = FALSE}
+pct_complete_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code), .N]) / nrow(cust_by_yr)
+```
+
+
+
+
+
+
