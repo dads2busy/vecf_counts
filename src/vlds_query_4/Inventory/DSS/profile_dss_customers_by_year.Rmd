@@ -42,9 +42,9 @@ unq_count_age_type_code <- nrow(unique(cust_by_yr[, .(age_type_code)]))
 unq_count_month_of_birth <- nrow(unique(cust_by_yr[, .(month_of_birth)]))
 unq_count_year_of_birth <- nrow(unique(cust_by_yr[, .(year_of_birth)]))
 #.. valid values ----
-pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|!age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
 pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!as.numeric(month_of_birth) %in% c(1:12), .N]) / nrow(cust_by_yr)
 pct_valid_values_year_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(year_of_birth)|!as.integer(year_of_birth) >= 1900, .N]) / nrow(cust_by_yr) 
 
