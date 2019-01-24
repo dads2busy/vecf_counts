@@ -47,6 +47,7 @@ cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Cust
 colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
 
 dictionary <- standard_col_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+colnames(dictionary) <- standard_col_names(colnames(dictionary))
 
 ```
 
@@ -330,8 +331,12 @@ if (record_inconsistent_2 > 0){
 
 # Does Year of Birth ever change for a unique ID? 
 
-longitudinal_inconsistent_1 <- 
-  cust_by_year[, .N , by = c("uniqueID", "year_of_birth")][N>1,][,.N]
+comp_set <- 
+  cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id]
+[N> 1, .N , by = c("unique_id") ]
+
+longitudinal_inconsistent_1 <-      # [N>,][,.N]
+
   
 
 longitudinal_inconsistent_count_1 <- 

@@ -1,0 +1,293 @@
+---
+output:
+  html_document:
+    theme: cosmo
+    highlight: null
+---
+
+<!--LIBRARIES-->
+```{r libraries, include=FALSE}
+library(descr)
+library(plyr)
+library(ggplot2)
+library(Hmisc)
+library(htmlTable)
+library(dataplumbr)
+#detach("package:SparkR", unload=T)s
+```
+
+<!--OPTIONS-->
+```{r options, include=FALSE}
+# set working directory
+# setwd("~/sdal/projects/resinfra")
+# connect to database
+#source(file="analysis/aerogers/pg_connect.R")
+# don't use scientific notation
+# options(scipen = 999)
+```
+
+<!--FUNCTIONS-->
+```{r functions, include=FALSE}
+# fix_column_names --> standard_col_names()
+# is_blnak --> is_blank()
+# fix camel case capitalizes but doesn't replace the "_"
+
+truncate <- function(x, ..., prec = 0){
+  base::trunc(x * 10^prec, ...) / 10^prec
+}
+printname <- function(x){
+  paste(capitalize(strsplit(gsub("_", " ", x), " ")[[1]]), collapse=" ")
+}
+```
+
+<!--GLOBAL VARIABLES-->
+```{r datasets, include=FALSE}
+# loading in data here - not sure where to put it
+cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/OCS/OCS Services By Year.csv", colClasses = "character")
+colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
+
+dictionary <- data.table::fread("~/git/vecf_counts/data/original/ExportedValues_cols_of_interest.csv")
+colnames(dictionary) <- standard_col_names(colnames(dictionary))
+
+```
+
+```{r global_variables, include = FALSE}
+
+# set the column name, table name, and demographic table name
+column_name = "service begin date"
+table_name = "OCS Services By Year"
+column_name_print <- printname(column_name)
+record_inconsistent_1 = "NA"
+record_percent_consistent_1 = "NA"
+record_inconsistent_2 = "NA"
+record_percent_consistent_2 = "NA"
+longitudinal_inconsistent_count_1 = "NA"
+longitudinal_percent_consistent_1 = "NA"
+longitudinal_inconsistent_count_2 = "NA"
+longitudinal_percent_consistent_2 = "NA"
+
+# set printable sections
+uniqueness_print = TRUE
+completeness_print = TRUE
+validity_print = TRUE
+record_consistency_1_print = TRUE
+record_consistency_2_print = FALSE
+record_consistency_3_print = FALSE
+longitudinal_consistency_1_print = FALSE
+longitudinal_consistency_2_print = FALSE
+```
+
+<!---DATASET TOTALS--->
+```{r dataset_totals, include=FALSE}
+# get the total count of records
+total_record_count <- 
+  nrow(cust_by_yr)
+
+# get the total count of individuals
+total_person_count <- 
+    length(unique(cust_by_yr$unique_id))
+
+```
+
+---
+title: "`r paste(table_name,  " - ", column_name_print, "Report")`"
+---
+
+<!--METADATA-->
+```{r metadata, include=FALSE}
+column_description <- "custom text"
+
+column_valid_values <- "Dates in 2015 - 2016 with valid months, days, and lengths are acceptable. "
+```
+
+
+<!--UNIQUENESS-->
+```{r uniqueness, include=FALSE, eval=uniqueness_print}
+values <-  cust_by_yr[!is_blank(service_begin_date), service_begin_date]
+
+unique_values <- 
+  length(unique(values))
+
+# frequency distribution table of active_status values
+frequencies <- as.data.frame(table( paste(stringr::str_sub(cust_by_yr$service_begin_date, 1,2), stringr::str_sub(cust_by_yr$service_begin_date, 7, 10), sep = "/")))
+
+# frequency distribution plot of active_status values
+ggplot(frequencies, aes(Var1, Freq)) +
+  geom_bar(stat="identity", fill ="paleturquoise4", width=.7) +
+  coord_flip() +ggtitle(paste(column_name_print, "Value Distribution")) +
+  xlab("Service Begin Date") +
+  ylab("Number of OCS Customers") +
+  theme(panel.background=element_blank())
+```
+```{r frequencies, include=FALSE, eval=uniqueness_print}
+print(frequencies)
+```
+
+<!--COMPLETENESS-->
+```{r completeness, include=FALSE, eval=completeness_print}
+missing <- cust_by_yr[is_blank(service_begin_date), .N]
+
+print(missing)
+
+#give the total count of responses
+print(total_record_count, row.names = FALSE)
+
+#calculate the percent of the variable which is complete
+percent_complete <- 
+  truncate(((total_record_count - missing)/total_record_count)*100, prec = 2)
+
+print(percent_complete, row.names = FALSE)
+```
+
+<!--VALUE VALIDITY-->
+```{r validity, include=FALSE, eval=validity_print}
+invalid = cust_by_yr[is_blank(service_begin_date)|
+                       !stringr::str_sub(service_begin_date, -4, -1) %in% c("2015", "2016") | 
+                       !as.numeric(stringr::str_sub(service_begin_date, -7, -6)) %in% c(1:31)| 
+                       !as.numeric(stringr::str_sub(service_begin_date, 1, 2)) %in% c(1:12), 
+                     .N] 
+
+  
+# get number of rows with invlaid values for active_status
+print(invalid)
+
+# give the total count of responses
+print(total_record_count, row.names = FALSE)
+
+# calculate the percent of the variable which is valid
+percent_valid = truncate(((total_record_count - invalid)/total_record_count)*100, prec = 2)
+print(percent_valid, row.names = FALSE)
+
+if (invalid > 0){
+# get record details
+  invalid_details <-
+    cust_by_yr[is_blank(service_begin_date)|!stringr::str_sub(service_begin_date, -4, -1) %in% c("2015", "2016") | 
+                       !as.numeric(stringr::str_sub(service_begin_date, -7, -6)) %in% c(1:31)| 
+                       !as.numeric(stringr::str_sub(service_begin_date, 1, 2)) %in% c(1:12),
+               c("unique_id", "service_begin_date", "service_placement_type" )] 
+ print(invalid_details) 
+}
+
+```
+
+
+
+
+
+<!-- START PRINTING OUTPUT HERE -->
+
+<!--PRINT SUMMARY OF DATA ELEMENT-->
+```{r printelementsummary, echo=FALSE, results="asis"}
+cat(paste("<hr size='30'>",
+          "<h2>SUMMARY OF DATA ELEMENT</h2>",
+          "<table><col width='300'><col width='600'>",
+          "<tr><td valign='middle'>", column_description,
+          "<br><br>**Number of Unique Values:", nrow(column_valid_values), "**",
+          "<div style='max-height:300px;max-width:290px;overflow-y:scroll;'>",
+          htmlTable(column_valid_values, rnames=FALSE, css.cell = 'vertical-align: top;', align = 'lll'),
+          "</div></td><td>"))
+```
+```{r, ref.label="uniqueness", echo=FALSE, eval=uniqueness_print}
+```
+```{r, echo=FALSE, results="asis"}
+cat(paste("</td></tr></table><hr />"))
+```
+
+<!--PRINT SUMMARY OF RESULTS-->
+```{r printresultssummary, echo=FALSE, results="asis"}
+cat(paste(
+  "<h2>DATA ANALYTICS SUMMARY OF RESULTS</h2>",
+  "<table style='border-top: solid 2px grey; border-bottom: solid 2px grey; margin-top: 10px' width='100%'><col width='40%'><col width='50%'><col width='10%'>",
+  "<tr style='text-align: left'><th>Test</th><th>Measurement Values</th><th>Value</th></tr>"
+   ))
+if (completeness_print){
+  cat(paste("<tr style='border-top: solid 1px grey'><td style='padding-bottom: .25em'>Completeness</td><td style='padding-bottom: .25em'>Number of missing values</td><td style='padding-bottom: .25em'>", missing, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent of complete values</td><td style='padding-bottom: .25em'>", percent_complete, "%</td></tr>"))
+}
+if (validity_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Validity</td><td style='padding-bottom: .25em'>Number of invalid values</td><td style='padding-bottom: .25em'>", invalid, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent of valid values</td><td style='padding-bottom: .25em'>", percent_valid, "%</td></tr>"))
+}
+if (uniqueness_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Uniqueness</td><td style='padding-bottom: .25em'>Number of unique values</td><td style='padding-bottom: .25em'>", unique_values, "</td></tr>"))
+}
+if (record_consistency_1_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Record Consistency I</td><td style='padding-bottom: .25em'>Number of inconsistent records</td><td style='padding-bottom: .25em'>", record_inconsistent_1, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent consistent records</td><td style='padding-bottom: .25em'>", record_percent_consistent_1, "%</td></tr>"))
+}
+if (record_consistency_2_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Record Consistency II</td><td style='padding-bottom: .25em'>Number of inconsistent records</td><td style='padding-bottom: .25em'>", record_inconsistent_2, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent consistent records</td><td style='padding-bottom: .25em'>", record_percent_consistent_2, "%</td></tr>"))
+}
+if (record_consistency_3_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Record Consistency III</td><td style='padding-bottom: .25em'>Number of inconsistent records</td><td style='padding-bottom: .25em'>", record_inconsistent_3, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent consistent records</td><td style='padding-bottom: .25em'>", record_percent_consistent_3, "%</td></tr>"))
+}
+if (longitudinal_consistency_1_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Longitudinal Inconsistency I</td><td style='padding-bottom: .25em'>Individuals with inconsistent records</td><td style='padding-bottom: .25em'>", longitudinal_inconsistent_count_1, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent individuals with consistent records</td><td style='padding-bottom: .25em'>", longitudinal_percent_consistent_1, "%</td></tr>"))
+}
+if (longitudinal_consistency_2_print){
+  cat(paste("<tr><td style='padding-bottom: .25em'>Longitudinal Inconsistency II</td><td style='padding-bottom: .25em'>Individuals with inconsistent records</td><td style='padding-bottom: .25em'>", longitudinal_inconsistent_count_2, "</td></tr>"))
+  cat(paste("<tr><td style='padding-bottom: .25em'></td><td style='padding-bottom: .25em'>Percent individuals with consistent records</td><td style='padding-bottom: .25em'>", longitudinal_percent_consistent_2, "%</td></tr>"))
+}
+cat(paste("</table><hr />"))
+```
+
+<!--PRINT UNIQUENESS-->
+```{r printuniqueness, echo=FALSE, results="asis", eval=uniqueness_print}
+cat(paste("<h2>UNIQUENESS</h2>",
+          "<h3>A frequency distribution of values for", column_name_print, ".</h3>",
+          "A basic", column_name_print, "distribution plot is shown giving the frequency of the values", 
+          paste(column_valid_values[[1]], collapse = ', '), 
+          "occuring in the dataset.",
+          "<br><br>**Number of unique values", unique_values, "**",
+          "<br><br>"))
+```
+```{r ref.label="uniqueness", echo=uniqueness_print, eval=uniqueness_print}
+```
+```{r ref.label="frequencies", echo=uniqueness_print, eval=uniqueness_print}
+```
+```{r, echo=FALSE, results="asis", eval=uniqueness_print}
+cat("<hr />")
+```
+
+<!--PRINT COMPLETENESS-->
+```{r, echo=FALSE, results="asis", eval=completeness_print}
+cat(paste("<h2>COMPLETENESS</h2>",
+          "<h3>Find records with missing values for", column_name_print, ".</h3>",
+          "The completeness of the data simply refers to whether or not there are missing or NULL values.",
+          "Whether or not the values should be missing or null is genrally determined when assessing record consistency.",
+          "In the case of", column_name_print, "there should be no missing values.",
+          "<br><br>**Number Missing", missing, "**",
+          "<br><br>**Percent Complete", percent_complete, "%**",
+          "<br><br>"))
+```
+```{r, ref.label="completeness", echo=completeness_print, eval=completeness_print}
+```
+```{r, echo=FALSE, results="asis",  eval=completeness_print}
+cat("<hr />")
+```
+
+<!--PRINT VALUE VALIDITY-->
+```{r, echo=FALSE, results="asis", eval=validity_print}
+cat(paste("<h2>VALUE VALIDITY</h2>",
+          "<h3>Find records with invalid values for", column_name_print, ".</h3>",
+          "Value validity checks that every value within the dataset is one of the allowed values.",
+          "In the case of", column_name_print, "all values should be one of the following:",
+          paste(column_valid_values[[1]], collapse = ", "),
+          "<br><br>**Number Invalid:", invalid, "**",
+          "<br><br>**Percent Valid:", percent_valid, "%**",
+          "<br><br>"))
+```
+```{r, ref.label="validity", echo=validity_print, eval=validity_print}
+```
+```{r, echo=FALSE, results="asis", eval=validity_print}
+cat("<hr />")
+```
+
+
+
+
+
+
