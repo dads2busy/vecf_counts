@@ -1,3 +1,4 @@
+
 ---
 output:
   html_document:
@@ -16,22 +17,8 @@ library(dataplumbr)
 #detach("package:SparkR", unload=T)s
 ```
 
-<!--OPTIONS-->
-```{r options, include=FALSE}
-# set working directory
-# setwd("~/sdal/projects/resinfra")
-# connect to database
-#source(file="analysis/aerogers/pg_connect.R")
-# don't use scientific notation
-# options(scipen = 999)
-```
-
 <!--FUNCTIONS-->
 ```{r functions, include=FALSE, cache=FALSE}
-# fix_column_names --> standard_col_names()
-# is_blnak --> is_blank()
-# fix camel case capitalizes but doesn't replace the "_"
-
 truncate <- function(x, ..., prec = 0){
   base::trunc(x * 10^prec, ...) / 10^prec
 }
@@ -51,7 +38,7 @@ dictionary <- standard_col_names(data.table::fread("~/git/vecf_counts/data/origi
 ```{r global_variables, include = FALSE, cache = FALSE}
 
 # set the column name, table name, and demographic table name
-column_name = "age_class_code"
+column_name = "unique_ID"
 table_name = "DSS Customers By Year"
 #demographic_table_name = "DSS Customers By Year"
 column_name_print <- printname(column_name)
@@ -71,19 +58,17 @@ validity_print = TRUE
 record_consistency_1_print = TRUE
 record_consistency_2_print = TRUE
 record_consistency_3_print = TRUE
-longitudinal_consistency_1_print = FALSE
-longitudinal_consistency_2_print = FALSE
+longitudinal_consistency_1_print = TRUE
+longitudinal_consistency_2_print = TRUE
 ```
 
 <!---DATASET TOTALS--->
 ```{r dataset_totals, include=FALSE, cache=FALSE}
 # get the total count of records
-total_record_count <- 
-  nrow(cust_by_yr)
+total_record_count <- nrow(cust_by_yr)
 
 # get the total count of individuals
-total_person_count <- 
-    length(unique(cust_by_yr$unique_id))
+total_person_count <- length(unique(cust_by_yr$unique_id))
 
 ```
 
