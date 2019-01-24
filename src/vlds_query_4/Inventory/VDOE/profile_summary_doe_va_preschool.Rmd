@@ -1,0 +1,166 @@
+---
+title: "DOE Virginia Preschool Initiative"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(magrittr)
+R.utils::sourceDirectory("~/git/vecf_counts/src/functions/")
+source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
+source(file = "~/git/vecf_counts/src/functions/is_blank.R")
+library(dplyr)
+
+cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DOE/VPI+.csv", colClasses = "character"))
+values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+colnames(cust_by_yr)
+```
+
+####Notes: 
+
+* I skipped [match_type] and [associated_id].  
++ match_type - missing in metadata, 100% of records have value "D"
++ associated_id - assuming this is an internal id?, 100% populated
+
+```{r columns, echo=FALSE, warning=FALSE}
+#. unique_id ----
+pct_complete_unique_id <- (nrow(cust_by_yr) - cust_by_yr[is_blank(unique_id), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_unique_id <- nrow(unique(cust_by_yr[, .(unique_id)]))
+#.. valid values ----
+wrong_id_length <- cust_by_yr[nchar(unique_id) != 7, .N]
+pct_valid_values_unique_id <- (nrow(cust_by_yr) - wrong_id_length) / nrow(cust_by_yr)
+
+#. birth month & year ----
+pct_complete_birth_m <- (nrow(cust_by_yr) - cust_by_yr[is_blank(birth_month), .N]) / nrow(cust_by_yr)
+pct_complete_birth_y <- (nrow(cust_by_yr) - cust_by_yr[is_blank(birth_year), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_birth_m <- nrow(unique(cust_by_yr[, .(birth_month)]))
+unq_count_birth_y <- nrow(unique(cust_by_yr[, .(birth_year)]))
+#.. valid values ----
+pct_valid_values_birth_m <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(birth_month) < 1| as.numeric(birth_month) > 12, .N]) / nrow(cust_by_yr)
+pct_valid_values_birth_y <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(birth_year) < 2010, .N]) / nrow(cust_by_yr)
+
+#. demographics columns - gender, race, english learner ----
+pct_complete_gend <- (nrow(cust_by_yr) - cust_by_yr[is_blank(gender), .N]) / nrow(cust_by_yr)
+pct_complete_race_eth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(students_race_ethnicity), .N]) / nrow(cust_by_yr)
+pct_complete_welfare <- (nrow(cust_by_yr) - cust_by_yr[is_blank(welfare_status_flag), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_gend <- nrow(unique(cust_by_yr[, .(gender)]))
+unq_count_race_eth <- nrow(unique(cust_by_yr[, .(students_race_ethnicity)]))
+unq_count_welfare <- nrow(unique(cust_by_yr[, .(welfare_status_flag)]))
+#.. valid values ----
+pct_valid_values_gend <- (nrow(cust_by_yr) - cust_by_yr[!gender %in% c("F", "M"), .N]) / nrow(cust_by_yr)
+valid_race_eth <- values[agency_name == "Virginia Department of Education"][view_name == "VPI+"][column_name == "Student's Race/Ethnicity"][,value]
+pct_valid_values_race_eth <- (nrow(cust_by_yr) - cust_by_yr[!as.numeric(students_race_ethnicity) %in% valid_race_eth|students_race_ethnicity == "8", .N]) / nrow(cust_by_yr)
+pct_valid_values_welfare <- (nrow(cust_by_yr) - cust_by_yr[!welfare_status_flag %in% c("N", "Y"), .N]) / nrow(cust_by_yr)
+
+#. school columns - school year, entry date, grade code, school division ----
+pct_complete_sch_yr <- (nrow(cust_by_yr) - cust_by_yr[is_blank(beginning_school_year), .N]) / nrow(cust_by_yr)
+pct_complete_entry <- (nrow(cust_by_yr) - cust_by_yr[is_blank(semester), .N]) / nrow(cust_by_yr)
+pct_complete_grade <- (nrow(cust_by_yr) - cust_by_yr[is_blank(grade), .N]) / nrow(cust_by_yr)
+pct_complete_sch_num <- (nrow(cust_by_yr) - cust_by_yr[is_blank(school), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_sch_yr <- nrow(unique(cust_by_yr[, .(beginning_school_year)]))
+unq_count_entry <- nrow(unique(cust_by_yr[, .(semester)]))
+unq_count_grade <- nrow(unique(cust_by_yr[, .(grade)]))
+unq_count_sch_num <- nrow(unique(cust_by_yr[, .(school)]))
+#.. valid values ----
+pct_valid_values_sch_yr <- (nrow(cust_by_yr) - cust_by_yr[as.numeric(beginning_school_year) < 2013, .N]) / nrow(cust_by_yr)
+pct_valid_values_entry <- (nrow(cust_by_yr) - cust_by_yr[semester %in% c("Fall", "Spring"), .N]) / nrow(cust_by_yr)
+pct_valid_values_grade <- (nrow(cust_by_yr) - cust_by_yr[grade %in% c("PreK", "K"), .N]) / nrow(cust_by_yr)
+valid_sch_num <- values[agency_name == "Virginia Department of Education"][view_name == "Student Records"][column_name == "Division Number - Reporting School Number"][,value]
+pct_valid_values_sch_num <- (nrow(cust_by_yr) - cust_by_yr[!school %in% valid_sch_num, .N]) / nrow(cust_by_yr)
+
+#. assessment date ----
+pct_complete_assess <- (nrow(cust_by_yr) - cust_by_yr[is_blank(assessment_date), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_assess <- nrow(unique(cust_by_yr[, .(assessment_date)]))
+#.. valid values ----
+pct_valid_values_assess <- (nrow(cust_by_yr) - cust_by_yr[!as.numeric(stringr::str_sub(assessment_date, start = -4L, end = -1L)) 
+                                                             %in% c(2010:2019), .N])  / nrow(cust_by_yr)
+
+```
+
+
+```{r UniqueID, echo = FALSE}
+
+SummaryEval <- 
+  rbind(
+    tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                         "Value" = c(pct_complete_unique_id, unq_count_unique_id, pct_valid_values_unique_id)),
+    tibble::tibble("Column" = "Birth Month", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_birth_m, unq_count_birth_m, pct_valid_values_birth_m)),
+    tibble::tibble("Column" = "Birth Year", "Measure"=c("% Complete", "# Unique", "% Valid "),
+               "Value" = c(pct_complete_birth_y,unq_count_birth_y, pct_valid_values_birth_y)),
+    tibble::tibble("Column" = "School Yr", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_sch_yr, unq_count_sch_yr, pct_valid_values_sch_yr)),
+    
+    tibble::tibble("Column" = "Semester", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_entry, unq_count_entry, pct_valid_values_entry)),
+    tibble::tibble("Column" = "Welfare", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_welfare, unq_count_welfare, pct_valid_values_welfare)),
+    tibble::tibble("Column" = "Gender", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_gend, unq_count_gend, pct_valid_values_gend)),
+    tibble::tibble("Column" = "Grade", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_grade, unq_count_grade, pct_valid_values_grade)),
+    tibble::tibble("Column" = "Race/Ethnicity", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_race_eth, unq_count_race_eth, pct_valid_values_race_eth)),
+    tibble::tibble("Column" = "School No", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_sch_num, unq_count_sch_num, pct_valid_values_sch_num)),
+    tibble::tibble("Column" = "Assessment", "Measure"=c("% Complete", "# Unique", "% Valid "),
+                   "Value" = c(pct_complete_assess, unq_count_assess, pct_valid_values_assess))
+    ) #rbind  
+
+```
+
+### Summary Table
+
+```{R, echo = FALSE}
+
+knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
+```
+
+####Validations: 
+* unique_id - filtered for nchar = 7
+* birth_month -filtered for months betweeen 1 and 12 
+* birth_year - filtered for years after 2010
+* beginning_school_year - filtered for years after 2013 
+* semester - filtered for values "Fall" and "Spring"
+* welfare_status_flag - filtered for values other than "N" and "Y"
+* gender - filtered for values other than "M" and "F"
+* grade - filtered for values other than "PreK" (prekindergarten) and "K" (kindergarten)
+* students_race_ethnicity - filtered out value "8" indicating race unknown or value doesn't exist in dictionary - 15 records total filtered out
+* school - filtered for codes appearing in the dictionary - 21 records total filtered out
+* assessment_date - filtered for years after 2010, this removed 69 values - blanks and "."
+
+####Longitudinal checks
+
+Total number of records is:
+
+```{r, echo = FALSE}
+print(nrow(cust_by_yr))
+```
+
+Since there are 135 unique IDs - need to check persistence of traits for the duplicates. There are 57 duplicates whose traits persist: 
+* birth year
+* birth month
+* gender
+* race/ethnicity
+
+All other columns could presumably change. 
+
+The percent unduplication rate is: 
+```{r, echo = FALSE}
+duplicated_entries <-  cust_by_yr[, .N, by = .(unique_id)][N>1, .(unique_id)] 
+# 57 duplicates
+duplicated_entries <-  cust_by_yr[, .N, by = .(unique_id, birth_year, birth_month, gender, students_race_ethnicity)][N>1, .(unique_id)]
+# same 57, even with birthday, gender, race/eth
+pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+pct_unduplicated_entries
+```
+
+
+
+
+

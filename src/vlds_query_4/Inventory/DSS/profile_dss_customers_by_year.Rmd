@@ -1,5 +1,5 @@
 ---
-title: "Profile DSS Customers"
+title: "DSS - Customers"
 output: html_document
 ---
 
@@ -11,15 +11,13 @@ source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
 source(file = "~/git/vecf_counts/src/functions/is_blank.R")
 
 cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
-
 values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
-dict_summary <- values %>% 
-  dplyr::filter(agency_name == "Department of Social Services") %>% 
-  dplyr::group_by(view_name, column_name) %>% 
-  dplyr::summarise(n = n())
 
 ```
 
+####Notes: 
+
+* I skipped [study_group_id]
 
 ```{r columns, echo=FALSE}
 #. unique_id ----
@@ -44,13 +42,11 @@ unq_count_age_type_code <- nrow(unique(cust_by_yr[, .(age_type_code)]))
 unq_count_month_of_birth <- nrow(unique(cust_by_yr[, .(month_of_birth)]))
 unq_count_year_of_birth <- nrow(unique(cust_by_yr[, .(year_of_birth)]))
 #.. valid values ----
-pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|!age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
-invalid_month <- c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")
-pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!month_of_birth %in% invalid_month, .N]) / nrow(cust_by_yr)
+pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_group_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_group_code)|age_group_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_age_type_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|age_type_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+pct_valid_values_month_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(month_of_birth)|!as.numeric(month_of_birth) %in% c(1:12), .N]) / nrow(cust_by_yr)
 pct_valid_values_year_of_birth <- (nrow(cust_by_yr) - cust_by_yr[is_blank(year_of_birth)|!as.integer(year_of_birth) >= 1900, .N]) / nrow(cust_by_yr) 
-
 
 #. school type ----
 pct_complete_school_type <- (nrow(cust_by_yr) - cust_by_yr[is_blank(school_type_code), .N]) / nrow(cust_by_yr)
@@ -65,8 +61,8 @@ pct_complete_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[is_blank(ethnicity_code
 #.. unique value count ----
 unq_count_ethnicity <- nrow(unique(cust_by_yr[, .(ethnicity_code)]))
 #.. valid values ----
-invalid_eth <- c("0", "3", "90", "93")
-pct_valid_values_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[ethnicity_code %in% invalid_eth, .N]) / nrow(cust_by_yr)
+valid_eth <- values[agency_name == "Department of Social Services"][view_name == "DSS Customers By Year"][column_name == "Ethnicity Code"][,value]
+pct_valid_values_ethnicity <- (nrow(cust_by_yr) - cust_by_yr[!ethnicity_code %in% valid_eth|ethnicity_code=="0", .N]) / nrow(cust_by_yr)
 
 #. gender ----
 pct_complete_gender <- (nrow(cust_by_yr) - cust_by_yr[is_blank(gender_code), .N]) / nrow(cust_by_yr)
@@ -92,12 +88,12 @@ unq_count_race_pacific <- nrow(unique(cust_by_yr[, .(cust_race_is_hawaiian_pacif
 unq_count_race_other <- nrow(unique(cust_by_yr[, .(customer_race_is_other_indicator)]))
 unq_count_race_white <- nrow(unique(cust_by_yr[, .(customer_race_is_white_indicator)]))
 #.. valid values ----
-pct_valid_values_race_amer_ind <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(cust_race_is_amer_indian_alaska_native_ind)])) / nrow(cust_by_yr)
-pct_valid_values_race_asian <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_asisan_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_black <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_black_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_pacific <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(cust_race_is_hawaiian_pacific_islander_ind)])) / nrow(cust_by_yr)
-pct_valid_values_race_other <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_other_indicator)])) / nrow(cust_by_yr)
-pct_valid_values_race_white <- (nrow(cust_by_yr) - nrow(cust_by_yr[is_blank(customer_race_is_white_indicator)])) / nrow(cust_by_yr)
+pct_valid_values_race_amer_ind <- (nrow(cust_by_yr) - nrow(cust_by_yr[!cust_race_is_amer_indian_alaska_native_ind %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_asian <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_asisan_indicator %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_black <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_black_indicator %in% c("N", "Y")]))/ nrow(cust_by_yr)
+pct_valid_values_race_pacific <- (nrow(cust_by_yr) - nrow(cust_by_yr[!cust_race_is_hawaiian_pacific_islander_ind %in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_other <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_other_indicator%in% c("N", "Y")])) / nrow(cust_by_yr)
+pct_valid_values_race_white <- (nrow(cust_by_yr) - nrow(cust_by_yr[!customer_race_is_white_indicator %in% c("N", "Y")])) / nrow(cust_by_yr)
 
 
 #. foster indicator ----
@@ -127,41 +123,17 @@ pct_complete_cal <- (nrow(cust_by_yr) - cust_by_yr[is_blank(calender_year_number
 #.. unique value count ----
 unq_count_cal <- nrow(unique(cust_by_yr[, .(calender_year_number)]))
 #.. valid values ----
-pct_valid_values_cal <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(calender_year_number) %in% 2013:2016, .N]) / nrow(cust_by_yr)
-
-
-
+pct_valid_values_cal <- (nrow(cust_by_yr) - cust_by_yr[!as.integer(calender_year_number) < 2013, .N]) / nrow(cust_by_yr)
 
 ```
 
-
-### Column Profiles
-
-#####Unique IDs
 
 ```{r UniqueID, echo = FALSE}
-IDeval <- tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                         "Value" = c(pct_complete_unique_id, 
-                                     unq_count_unique_id, pct_valid_values_unique_id))
-
-knitr::kable(reshape2::recast(IDeval, Column~Measure))
-```
-
-#####Age Columns
-
-For reference: the age column values & meanings
-
-```{r agedict, echo = TRUE}
-age_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Age")]
-#age_dict[ , 3:5]
-knitr::kable(age_dict[ , 2:5])
-```
-
-
-
-```{r Age, echo = FALSE}
-AGEeval <- 
+SummaryEval <-
   rbind(
+  tibble::tibble("Column" = "ID", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                         "Value" = c(pct_complete_unique_id, 
+                                     unq_count_unique_id, pct_valid_values_unique_id)),
     tibble::tibble("Column" = "Age Class", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_age_class_code, 
                                unq_count_age_class_code, pct_valid_values_age_class_code)),
@@ -176,70 +148,13 @@ AGEeval <-
                                unq_count_month_of_birth, pct_valid_values_month_of_birth)),
     tibble::tibble("Column" = "Year of Birth", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_year_of_birth, 
-                               unq_count_year_of_birth, pct_valid_values_year_of_birth))
-    ) #rbind  
-
-knitr::kable(reshape2::recast(AGEeval, Column~Measure))
-```
-
-#####School Type
-
-For reference: the school type values & meanings
-
-```{r schdict, echo=TRUE}
-sch_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Sch")]
-knitr::kable(sch_dict[,2:5])
-```
-
-```{r school, echo = FALSE}
-SCHeval <- tibble::tibble("Column" = "School Type", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_school_type, unq_count_school_type, pct_valid_values_sch_type))
-
-knitr::kable(reshape2::recast(SCHeval, Column~Measure))
-```
-
-#####Ethnicity
-
-For reference: the school type values & meanings
-
-```{r ethdict, echo=TRUE}
-eth_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Eth")]
-knitr::kable(eth_dict[,2:5])
-```
-
-```{r ethnicity, echo=FALSE}
-ETHeval <- tibble::tibble("Column" = "Ethnicity", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_ethnicity, unq_count_ethnicity, pct_valid_values_ethnicity))
-knitr::kable(reshape2::recast(ETHeval, Column~Measure))
-```
-
-#####Gender
-
-For reference: the school type values & meanings
-
-```{r genddict, echo=TRUE}
-gend_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Gend")]
-knitr::kable(gend_dict[,2:5])
-```
-
-``` {r gender, echo =FALSE}
-GENDeval <- tibble::tibble("Column" = "Gender", "Measure" = c("% Complete", "# Unique", "% Valid "), 
-                          "Value" = c(pct_complete_gender, unq_count_gender, pct_valid_values_gender))
-knitr::kable(reshape2::recast(GENDeval, Column~Measure))
-```
-
-#####Race
-
-For reference: the race type values & meanings. FYI - these should have Y's for Yes response. There have been no 0's in the data, and there are Y's. 
-
-```{r racedict, echo=TRUE}
-race_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "Cust")]
-knitr::kable(race_dict[,2:5])
-```
-
-```{r race, echo = FALSE}
-RACEeval <- 
-  rbind(
+                               unq_count_year_of_birth, pct_valid_values_year_of_birth)),
+    tibble::tibble("Column" = "School Type", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_school_type, unq_count_school_type, pct_valid_values_sch_type)),
+    tibble::tibble("Column" = "Ethnicity", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_ethnicity, unq_count_ethnicity, pct_valid_values_ethnicity)),
+    tibble::tibble("Column" = "Gender", "Measure" = c("% Complete", "# Unique", "% Valid "), 
+                          "Value" = c(pct_complete_gender, unq_count_gender, pct_valid_values_gender)),
     tibble::tibble("Column" = "Race: Amer Ind", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_race_amer_ind, unq_count_race_amer_ind, 
                                pct_valid_values_race_amer_ind)),
@@ -257,23 +172,7 @@ RACEeval <-
                                pct_valid_values_race_other)),
     tibble::tibble("Column" = "Race: White", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_race_white, unq_count_race_white, 
-                               pct_valid_values_race_white))
-  ) #rbind
-knitr::kable(reshape2::recast(RACEeval, Column~Measure))
-```
-
-#####Service Indicators
-
-For reference: the services values & meanings. Technically the Foster Definition comes from a different view - but the values should be the same. 
-
-```{r servdict, echo=TRUE}
-serv_dict <- values[agency_name == "Department of Social Services"][stringr::str_detect(column_name, "SNAP Case")|stringr::str_detect(column_name, "TANF Case")|stringr::str_detect(column_name, "Foster Care Indicator")]
-knitr::kable(serv_dict[,2:5])
-```
-
-```{r serviceind, echo=FALSE}
-SERVICEINDeval <-
-  rbind(
+                               pct_valid_values_race_white)),
     tibble::tibble("Column" = "Foster", "Measure"=c("% Complete", "# Unique", "% Valid "),
                    "Value" = c(pct_complete_foster, unq_count_foster, 
                                pct_valid_values_foster)),
@@ -287,15 +186,69 @@ SERVICEINDeval <-
                    "Value" = c(pct_complete_cal, unq_count_cal, 
                                pct_valid_values_cal))
   ) #rbind
-knitr::kable(reshape2::recast(SERVICEINDeval, Column~Measure))
+
 ```
 
 ### Summary Table
 
 ```{R}
-SummaryEval <- rbind(IDeval, AGEeval, SCHeval, ETHeval, RACEeval, GENDeval, SERVICEINDeval)
 knitr::kable(reshape2::recast(SummaryEval, Column~Measure))
 ```
+
+
+####Validations: 
+* unique_id - filtered for nchar = 7 
+* age_class_code - filtered out values 90 (not valid) and 91 (source blank) 
+* age_group_code - filtered out values 90 and 91
+* age_type_code  - filtered out values 90 and 91
+* month_of_birth - filtered out blanks and values other than 1:12
+* year_of_birth  - filtered out values before 1900
+* school_type_code - filtered out school type 0 (source blank)   
+* ethnicity_code - filtered out values that do not appear in the dictionary (3, 90, 93) and value 0 (source blank)
+* foster_care_case_indicator - filtered out values other than "N" and "Y"
+* gender_code  - filtered out values other than "1" (femal) and "2" (male)
+* cust_race_is_amer_indian_alaska_native_ind - filtered out values other than "N" and "Y"
+* customer_race_is_asisan_indicator  - filtered out values other than "N" and "Y"
+* customer_race_is_black_indicator  - filtered out values other than "N" and "Y"
+* cust_race_is_hawaiian_pacific_islander_ind - filtered out values other than "N" and "Y"
+* customer_race_is_other_indicator  - filtered out values other than "N" and "Y"
+* customer_race_is_white_indicator  - filtered out values other than "N" and "Y"
+* snap_case_indicator - filtered out values other than "N" and "Y"
+* tanf_case_indicator  - filtered out values other than "N" and "Y"
+* calender_year_number - filtered out values before 2013
+
+####Longitudinal checks
+
+Total number of records is:
+
+```{r, echo = FALSE}
+print(nrow(cust_by_yr))
+```
+
+
+There are 1,325,911 duplicates by unique id
+There are 1,325,867 duplicates by unique id + year of birth
+There are 1,325,844 duplicates by unique id + year of birth + month of birth
+There are 1,325,566 duplicates by unique id + year of birth + month of birth + gender
+There are 1,323,281 duplicates by unique id + year of birth + month of birth + gender + ethnicity
+
+
+Using the smallest level of duplication, the percent unduplication rate is:  
+```{r, echo = FALSE}
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id)][N>1, .(unique_id)] 
+# 1,325,911  duplicates
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code)][N>1, .(unique_id)]  
+# duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code, ethnicity_code)][N>1, .(unique_id)]  
+duplicated_entries <- cust_by_yr[, .N, by = .(unique_id, year_of_birth, month_of_birth, gender_code, ethnicity_code, customer_race_is_black_indicator)][N>1, .(unique_id)]  
+
+pct_unduplicated_entries <- (nrow(cust_by_yr) - nrow(duplicated_entries)) / nrow(cust_by_yr)
+pct_unduplicated_entries
+```
+
+
+
 
 
 

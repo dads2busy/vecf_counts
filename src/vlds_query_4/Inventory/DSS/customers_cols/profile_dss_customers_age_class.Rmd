@@ -1,0 +1,159 @@
+---
+title: "VDSS - Customers - Age Class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(magrittr)
+library(ggplot2)
+R.utils::sourceDirectory("~/git/vecf_counts/src/functions/")
+source(file = "~/git/vecf_counts/src/functions/fix_column_names.R")
+source(file = "~/git/vecf_counts/src/functions/is_blank.R")
+
+cust_by_yr <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
+values <- fix_column_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+```
+
+
+<!--GLOBAL VARIABLES-->
+```{r global_variables, include=FALSE, cache=FALSE}
+# set the column name, table name, and demographic table name
+column_name = "age_class_code"
+#table_name = "DSS Customers By Year"
+#demographic_table_name = "DSS Customers By Year"
+column_name_print <- printname(column_name)
+record_inconsistent_1 = "NA"
+record_percent_consistent_1 = "NA"
+record_inconsistent_2 = "NA"
+record_percent_consistent_2 = "NA"
+longitudinal_inconsistent_count_1 = "NA"
+longitudinal_percent_consistent_1 = "NA"
+longitudinal_inconsistent_count_2 = "NA"
+longitudinal_percent_consistent_2 = "NA"
+
+# set printable sections
+uniqueness_print = TRUE
+completeness_print = TRUE
+validity_print = TRUE
+record_consistency_1_print = TRUE
+record_consistency_2_print = TRUE
+longitudinal_consistency_1_print = TRUE
+longitudinal_consistency_2_print = FALSE
+```
+
+
+
+#### SUMMARY OF DATA ELEMENT
+
+Age class code is an adult/child indicator. It is given as a number 1 or 2 to indicate child or adult respectively, and 90 or 91 to indicate unknown values. This data is collected from VDSS beneficiaries receiving services in the 2005-2015 years. ??
+
+Number of Unique Values: 3
+
+```{r uniqueness, include=FALSE, cache=FALSE, eval=uniqueness_print}
+unique_values <- 
+  nrow(unique(values))
+
+# frequency distribution table of active_status values
+frequencies = as.data.frame(table(values[[1]]))
+
+# frequency distribution plot of active_status values
+ggplot(frequencies, aes(Var1, Freq)) +
+  geom_bar(stat="identity", fill ="paleturquoise4", width=.7) +
+  coord_flip() +ggtitle(paste(column_name_print, "Value Distribution")) +
+  xlab("Code") +
+  ylab("Number of Students") +
+  theme(panel.background=element_blank())
+```
+```{r frequencies, include=FALSE, cache=FALSE, eval=uniqueness_print}
+print(frequencies)
+```
+
+
+
+```{r uniqueness, echo=FALSE}
+unique_vals <- cust_by_yr %>% dplyr::group_by(age_class_code) %>% dplyr::summarise(n = n()) 
+values <- values[agency_name == "Department of Social Services"][view_name == "DSS Customers By Year"][column_name == "Age Class Code"]
+vals_ct_desc <- unique_vals %>% dplyr::left_join(values, by = c("age_class_code" = "value")) %>% dplyr::select(age_class_code, description, n)
+
+colnames(vals_ct_desc) <- c("Age Class Code", "Description", "Count")
+knitr::kable(vals_ct_desc)
+ggplot(data = vals_ct_desc, mapping = aes(x = Description, y = Count)) +
+  geom_col()
+
+```
+
+
+#### Data Analytics Summary
+
+```{r}
+#. age columns ---- 
+#.. completeness ----
+pct_complete_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code), .N]) / nrow(cust_by_yr)
+#.. unique value count ----
+unq_count_age_class_code <- nrow(unique(cust_by_yr[, .(age_class_code)]))
+#.. valid values ----
+pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+#.. missing values
+blanks <- sum(is_blank(cust_by_yr$age_class_code))
+
+
+tibble::tibble("Column" = "Age Class", "Measure"=c("% Complete", "# Unique", "% Valid", "# Missing"),
+                   "Value" = c(pct_complete_age_class_code, unq_count_age_class_code, pct_valid_values_age_class_code, blanks))
+
+```
+
+
+
+#### Uniqueness
+
+```{r}
+
+```
+
+
+#### Completeness
+
+```{r completeness, echo=FALSE}
+
+
+
+
+ComplEval <- tibble::tibble("Measure" = c("% Complete", "# Blanks"), 
+                         "Value" = c(pct_complete_age_class_code, blanks))
+knitr::kable(ComplEval)  
+  
+```
+
+
+
+
+#### Record Consistency
+
+```{r consistency, echo = FALSE}
+pct_valid_values_age_class_code <- (nrow(cust_by_yr) - cust_by_yr[is_blank(age_class_code)|!age_class_code %in% c("90", "91"), .N]) / nrow(cust_by_yr)
+
+# Checking Adult/Child Classification
+vals_ct_age <- cust_by_yr[age_class_code == "1", .N , by = list(age_class_code, year_of_birth) ]
+vals_ct_age <- vals_ct_age %>% dplyr::mutate(threshold = ifelse(year_of_birth <= 1999, 1, 2))
+
+ggplot(data = vals_ct_age, mapping = aes(x = year_of_birth, y =N)) +
+  geom_col(fill = vals_ct_age$threshold)
+
+ 
+# cust_by_yr %>% dplyr::filter(age_class_code == "1") %>% dplyr::group_by(year_of_birth) %>% dplyr::summarise(n = n())
+# 
+#            
+# age_group_code
+# age_class_code
+# month_of_birth
+# year_of_birth
+
+```
+
+
+
+
+
+
