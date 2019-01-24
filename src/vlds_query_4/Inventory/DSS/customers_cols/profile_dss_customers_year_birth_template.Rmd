@@ -43,7 +43,9 @@ printname <- function(x){
 <!--GLOBAL VARIABLES-->
 ```{r datasets, include=FALSE, cache=TRUE}
 # loading in data here - not sure where to put it
-cust_by_yr <- standard_col_names(data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character"))
+cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character")
+colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
+
 dictionary <- standard_col_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
 
 ```
