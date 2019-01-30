@@ -14,7 +14,6 @@ library(ggplot2)
 library(Hmisc)
 library(htmlTable)
 library(dataplumbr)
-library(lubridate)
 library(data.table)
 #detach("package:SparkR", unload=T)s
 ```
@@ -57,8 +56,8 @@ colnames(dictionary) <- standard_col_names(colnames(dictionary))
 ```{r global_variables, include = FALSE}
 
 # set the column name, table name, and demographic table name
-column_name = "birth year"
-table_name = "DOE VPI+"
+column_name = "gender"
+table_name = "DOE Preschool Initiative"
 column_name_print <- printname(column_name)
 record_inconsistent_1 = "NA"
 record_percent_consistent_1 = "NA"
@@ -73,10 +72,10 @@ longitudinal_percent_consistent_2 = "NA"
 uniqueness_print = TRUE
 completeness_print = TRUE
 validity_print = TRUE
-record_consistency_1_print = TRUE
-record_consistency_2_print = TRUE
+record_consistency_1_print = FALSE
+record_consistency_2_print = FALSE
 record_consistency_3_print = FALSE
-longitudinal_consistency_1_print = TRUE
+longitudinal_consistency_1_print = FALSE
 longitudinal_consistency_2_print = FALSE
 ```
 
@@ -100,26 +99,25 @@ title: "`r paste(table_name,  " - ", column_name_print, "Report")`"
 ```{r metadata, include=FALSE}
 column_description <- "custom text"
 
-column_valid_values <- tibble::tibble("Year" = c(2010:2012))
-  #dictionary[agency_name == "Virginia Department of Education"][view_name == "VPI+"][column_name == "Birth Month"][,c("value", "description")]
+column_valid_values <- dictionary[agency_name == "Virginia Department of Education"][view_name == "VPI+"][column_name == "Gender"][,c("value", "description")]
 ```
 
 
 <!--UNIQUENESS-->
 ```{r uniqueness, include=FALSE, eval=uniqueness_print}
-values <-  cust_by_yr[!is_blank(birth_year), birth_year]
+values <-  cust_by_yr[!is_blank(gender)|gender %in% c("M", "F"), gender]
 
 unique_values <- 
   length(unique(values))
 
 # frequency distribution table of active_status values
-frequencies <- as.data.table(table(values))
+frequencies <- as.data.table(table( values))
 
 # frequency distribution plot of active_status values
 ggplot(frequencies, aes(values, N)) +
   geom_bar(stat = "identity", fill ="paleturquoise4", width=.7) +
-  coord_flip() +ggtitle(paste(column_name_print, "Value Distribution")) +
-  xlab("Birth Year") +
+  coord_flip() + ggtitle(paste(column_name_print, "Value Distribution")) +
+  xlab("Welfare Recipient") +
   ylab("Number of Students") +
   theme(panel.background=element_blank())
 
@@ -132,7 +130,7 @@ print(head(frequencies))
 
 <!--COMPLETENESS-->
 ```{r completeness, include=FALSE, eval=completeness_print}
-missing <- cust_by_yr[is_blank(birth_year), .N]
+missing <- cust_by_yr[is_blank(gender), .N]
 
 print(missing)
 
@@ -148,7 +146,7 @@ print(percent_complete, row.names = FALSE)
 
 <!--VALUE VALIDITY-->
 ```{r validity, include=FALSE, eval=validity_print}
-invalid = cust_by_yr[is_blank(birth_year)|!birth_year %in% as.character(c(2010:2019)), .N]
+invalid = cust_by_yr[is_blank(gender)|!gender %in% c("F", "M"), .N]
   
 # get number of rows with invlaid values for active_status
 print(invalid)
@@ -163,175 +161,13 @@ print(percent_valid, row.names = FALSE)
 if (invalid > 0){
 # get record details
   invalid_details <-
-    cust_by_yr[is_blank(birth_year)|!birth_year %in% as.character(c(2010:2019)),
-               c("unique_id", "birth_year", "school" )] 
+    cust_by_yr[is_blank(gender)|!gender %in% c("F", "M"),
+               c("unique_id", "gender", "school" )] 
  print(invalid_details) 
 }
 
 ```
 
-
-<!--RECORD CONSISTENCY I-->
-```{r record_consistency_1, include=FALSE, cache=FALSE, eval=record_consistency_1_print}
-
-# create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_1 <- c("Assessment Year")
-
-# consistency check definition
-record_inconsistent_compare_1_definition <- 
-  "Check if there any records that have an assessment date before birth year."
-
-# get inconsistent records
-
-cust_int <- cust_by_yr[!is.na(lubridate::mdy(assessment_date)) & !is_blank(birth_year), ]
-cust_int <- cust_int[lubridate::year(mdy(assessment_date)) <= as.numeric(birth_year), ]
-
-record_inconsistent_1 <- cust_int[, .N]
-print(record_inconsistent_1)
-
-# give the total count of responses
-print(total_record_count)
-
-# calculate the percent of the variable which is consistent
-record_percent_consistent_1 <- 
-  truncate(((total_record_count - record_inconsistent_1)/total_record_count)*100, prec = 2)
-
-print(record_percent_consistent_1)
-
-if (record_inconsistent_1 > 0){
-# get record details
-  record_inconsistent_1_details <- cust_int[int <0, ][, c("birth_year", "assessment_date")]
-
-  # read in data
-  year_plot_df <- 
-    as.data.frame(
-      table(record_inconsistent_1_details[[1]], record_inconsistent_1_details[[2]], exclude=NULL), na.rm=FALSE)
-
-  
-# plot inconsistencies by School Year
-  school_year <- (ggplot(
-    year_plot_df, aes(Var2, Freq)) +
-    geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-    ggtitle("Inconsistent Record Entry by Assessment Date") +
-    ylab("Frequency") +
-    scale_x_discrete("Birth Year", drop = "FALSE") +
-    theme(panel.background=element_blank()))
-  }
-
-```
-
-
-<!--RECORD CONSISTENCY II-->
-```{r record_consistency_2, include=FALSE, cache=FALSE, eval=record_consistency_2_print}
-# create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_2 <- c("Beginning School Year")
-
-# consistency check definition
-record_inconsistent_compare_2_definition <- 
-  "Check where records have birth year after to beginning school year."
-
-# get inconsistent records
-record_inconsistent_2 <- 
-  cust_by_yr[birth_year >= beginning_school_year][,.N]
-
-print(record_inconsistent_2)
-
-# give the total count of responses
-print(total_record_count)
-
-# calculate the percent of the variable which is consistent
-record_percent_consistent_2 <- 
-  truncate(((total_record_count - record_inconsistent_2)/total_record_count)*100, prec = 2)
-
-print(record_percent_consistent_2)
-
-if (record_inconsistent_2 > 0){
-# get record details
-  record_inconsistent_2_details <-
-    cust_by_yr[birth_year >= beginning_school_year][ , c("beginning_school_year", "birth_year")]
-
-  # read in data
-  year_plot_df <- 
-    as.data.frame(
-      table(record_inconsistent_2_details[[1]], record_inconsistent_2_details[[2]]))
-  
-  # plot inconsistencies by School Year
-  age_type <- (ggplot(
-    year_plot_df, aes(Var2, Freq)) +
-    geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-    ggtitle("Inconsistent Record Entry by Birth Year") +
-    ylab("Birth Year") +
-    scale_x_discrete("School Year", drop = "FALSE") +
-    theme(panel.background=element_blank()))
-
-  #  theme(text=element_text(size=10), axis.text.x=element_text(angle=90, vjust=1))) +
-  #  theme(axis.text.x = element_text(angle=90, vjust=0.5, size=2))
-  
-  print(age_type)
-  print(table(year_plot_df))
-
-}
-
-```
-
-
-<!--LONGITUDINAL CONSISTENCY I-->
-```{r longitudinal_consistency_1, include=FALSE, cache=FALSE, eval=longitudinal_consistency_1_print}
-
-longitudinal_inconsistent_1 <- cust_by_yr[, .N, by = list(birth_year, unique_id)][, .N, by = list(unique_id)][N>1]
-
-longitudinal_inconsistent_count_1 <- 
-  nrow(longitudinal_inconsistent_1)
-
-longitudinal_percent_consistent_1 <- 
-  truncate(((total_person_count - longitudinal_inconsistent_count_1)/total_person_count)*100, prec = 2)
-
-print(longitudinal_percent_consistent_1)
-
-# convert dataframe column to a single-quoted, comma-delimited string for use in next SQL query
-unique_id_list <- 
-  paste0("'", paste0(longitudinal_inconsistent_1$unique_id, collapse = "','"), "'")
-
-if (longitudinal_inconsistent_count_1 > 0){
-# get record details
-longitudinal_inconsistent_1_details <- cust_by_yr[unique_id %in% longitudinal_inconsistent_1,c("unique_id", "birth_year", "school")]
-
-# read in data
-year_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-#levels(year_plot_df$Var1) <-  c("2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015")
-
-# plot inconsistencies by School Year
-
-school_year <- (ggplot(
-  year_plot_df, aes(Var1, Freq)) +
-  geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by Birth Year") +
-  scale_x_discrete("Birth Year", drop = FALSE) +
-  ylab("Students") + 
-  theme(panel.background=element_blank()))
-
-
-# read in data
-division_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-# plot inconsistencies by School Division
-  division <- (ggplot(
-  head(division_plot_df[order(-division_plot_df$Freq),], n=20), aes(Var1, Freq)) +
-  geom_bar(stat="identity",  fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by School ") +
-  xlab("School ") +
-  ylab("Students") +
-  theme(panel.background=element_blank()))
-  print(school_year)
-  print(division)
-
-  }
-```
 
 
 <!-- START PRINTING OUTPUT HERE -->
@@ -447,23 +283,6 @@ cat("<hr />")
 ```
 
 
-<!--PRINT LONGITUDINAL CONSISTENCY I-->
-```{r longitudinal_consistency_1_print_1, echo=FALSE, results="asis", cache=FALSE, eval=longitudinal_consistency_1_print}
-cat(paste("<h2>LONGITUDINAL CONSISTENCY I</h2>",
-          "<h3>An inconsistency in the data is checked over time (longitudinal),",
-          "to see if the same value is recorded for every new record. For", column_name_print, 
-          "this would be if a student recorded as one", column_name_print, 
-          "one year but another", column_name_print, "the next year.",
-          ".</h3>",
-          "<br><br>**Individuals with Inconsistent Records:", longitudinal_inconsistent_count_1, "**",
-          "<br><br>**Percent Consistent:", longitudinal_percent_consistent_1, "%**",
-          "<br><br>"))
-```
-```{r longitudinal_consistency_1_print_2, ref.label="longitudinal_consistency_1", cache=FALSE, echo=longitudinal_consistency_1_print, eval=longitudinal_consistency_1_print}
-```
-```{r longitudinal_consistency_1_print_3, echo=FALSE, results="asis", cache=FALSE, eval=longitudinal_consistency_1_print}
-cat("<hr />")
-```
 
 
 
