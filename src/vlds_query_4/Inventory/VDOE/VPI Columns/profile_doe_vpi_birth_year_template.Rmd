@@ -6,13 +6,16 @@ output:
 ---
 
 <!--LIBRARIES-->
-```{r libraries, include=FALSE, cache=FALSE}
+```{r libraries, include=FALSE}
 library(descr)
 library(plyr)
+library(magrittr)
 library(ggplot2)
 library(Hmisc)
 library(htmlTable)
 library(dataplumbr)
+library(lubridate)
+library(data.table)
 #detach("package:SparkR", unload=T)s
 ```
 
@@ -27,7 +30,7 @@ library(dataplumbr)
 ```
 
 <!--FUNCTIONS-->
-```{r functions, include=FALSE, cache=FALSE}
+```{r functions, include=FALSE}
 # fix_column_names --> standard_col_names()
 # is_blnak --> is_blank()
 # fix camel case capitalizes but doesn't replace the "_"
@@ -41,21 +44,21 @@ printname <- function(x){
 ```
 
 <!--GLOBAL VARIABLES-->
-```{r datasets, include=FALSE, cache=TRUE}
+```{r datasets, include=FALSE}
 # loading in data here - not sure where to put it
-cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character")
+cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DOE/VPI+.csv", colClasses = "character")
 colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
 
-dictionary <- standard_col_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+dictionary <- data.table::fread("~/git/vecf_counts/data/original/ExportedValues_cols_of_interest.csv")
 colnames(dictionary) <- standard_col_names(colnames(dictionary))
 
 ```
 
-```{r global_variables, include = FALSE, cache = FALSE}
+```{r global_variables, include = FALSE}
 
 # set the column name, table name, and demographic table name
-column_name = "year_of_birth"
-table_name = "DSS Customers By Year"
+column_name = "birth year"
+table_name = "DOE VPI+"
 column_name_print <- printname(column_name)
 record_inconsistent_1 = "NA"
 record_percent_consistent_1 = "NA"
@@ -72,13 +75,13 @@ completeness_print = TRUE
 validity_print = TRUE
 record_consistency_1_print = TRUE
 record_consistency_2_print = TRUE
-record_consistency_3_print = TRUE
-longitudinal_consistency_1_print = TRUE
+record_consistency_3_print = FALSE
+longitudinal_consistency_1_print = FALSE
 longitudinal_consistency_2_print = FALSE
 ```
 
 <!---DATASET TOTALS--->
-```{r dataset_totals, include=FALSE, cache=TRUE}
+```{r dataset_totals, include=FALSE}
 # get the total count of records
 total_record_count <- 
   nrow(cust_by_yr)
@@ -94,39 +97,42 @@ title: "`r paste(table_name,  " - ", column_name_print, "Report")`"
 ---
 
 <!--METADATA-->
-```{r metadata, include=FALSE, cache=FALSE}
+```{r metadata, include=FALSE}
 column_description <- "custom text"
 
-column_valid_values <-  as.character(c(1900:2019))
-  # dictionary[agency_name == "Department of Social Services"][view_name == "DSS Customers By Year"][column_name == "Age Class Code"][, c("value", "description")]
+column_valid_values <- tibble::tibble("Year" = c(2010:2012))
+  #dictionary[agency_name == "Virginia Department of Education"][view_name == "VPI+"][column_name == "Birth Month"][,c("value", "description")]
 ```
 
 
 <!--UNIQUENESS-->
-```{r uniqueness, include=FALSE, cache=FALSE, eval=uniqueness_print}
-values <-  cust_by_yr[!is_blank(year_of_birth), year_of_birth]
+```{r uniqueness, include=FALSE, eval=uniqueness_print}
+values <-  cust_by_yr[!is_blank(birth_year), birth_year]
 
 unique_values <- 
   length(unique(values))
 
 # frequency distribution table of active_status values
-frequencies = as.data.frame(table(values))
+frequencies <- as.data.table(table(values))
 
 # frequency distribution plot of active_status values
-ggplot(frequencies, aes(values, Freq)) +
-  geom_bar(stat="identity", fill ="paleturquoise4", width=.7) +
+ggplot(frequencies, aes(values, N)) +
+  geom_bar(stat = "identity", fill ="paleturquoise4", width=.7) +
   coord_flip() +ggtitle(paste(column_name_print, "Value Distribution")) +
-  xlab("Year of Birth") +
-  ylab("Number of VDSS Customers") +
+  xlab("Birth Year") +
+  ylab("Number of Students") +
   theme(panel.background=element_blank())
+
+# frequencies <- frequencies %>% dplyr::group_by(Freq) %>% dplyr::summarise(n = n())
 ```
-```{r frequencies, include=FALSE, cache=FALSE, eval=uniqueness_print}
-print(frequencies)
+```{r frequencies, include=FALSE, eval=uniqueness_print}
+# sample of frequencies
+print(head(frequencies))
 ```
 
 <!--COMPLETENESS-->
-```{r completeness, include=FALSE, cache=FALSE, eval=completeness_print}
-missing <- cust_by_yr[is_blank(year_of_birth), .N]
+```{r completeness, include=FALSE, eval=completeness_print}
+missing <- cust_by_yr[is_blank(birth_month), .N]
 
 print(missing)
 
@@ -141,8 +147,8 @@ print(percent_complete, row.names = FALSE)
 ```
 
 <!--VALUE VALIDITY-->
-```{r validity, include=FALSE, cache=FALSE, eval=validity_print}
-invalid = cust_by_yr[is_blank(year_of_birth)|as.numeric(year_of_birth) <= 1899, .N] 
+```{r validity, include=FALSE, eval=validity_print}
+invalid = cust_by_yr[is_blank(birth_month)|!birth_month %in% as.character(c(1:12)), .N]
   
 # get number of rows with invlaid values for active_status
 print(invalid)
@@ -157,25 +163,32 @@ print(percent_valid, row.names = FALSE)
 if (invalid > 0){
 # get record details
   invalid_details <-
-    cust_by_yr[is_blank(year_of_birth)|as.numeric(year_of_birth) <= 1899, c("unique_id", "age_class_code", "age_group_code", "age_type_code" , "calender_year_number", "year_of_birth")] 
+    cust_by_yr[is_blank(birth_month)|!birth_month %in% as.character(c(1:12)),
+               c("unique_id", "birth_month", "school" )] 
  print(invalid_details) 
 }
 
 ```
 
+
 <!--RECORD CONSISTENCY I-->
 ```{r record_consistency_1, include=FALSE, cache=FALSE, eval=record_consistency_1_print}
+
 # create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_1 <- "Age Class Code"
+record_inconsistent_compare_columns_1 <- c("Assessment Year")
 
 # consistency check definition
 record_inconsistent_compare_1_definition <- 
-  "Check where records with year of birth of prior to 1900 have an age class 90 code. Check where records have a blank year of birth have an age class of 91."
+  "Check if there any records that have an assessment date outside of the given school year."
 
 # get inconsistent records
-record_inconsistent_1 <- 
-  cust_by_yr[is_blank(year_of_birth) & age_class_code != "91" | as.numeric(year_of_birth) <= 1899 & age_class_code != "90", ][ ,.N]
+interval15 <- lubridate::interval(start = lubridate::ymd("2015-07-01"), end = lubridate::ymd("2016-06-30"))
+interval16 <- interval(start = lubridate::ymd("2016-07-01"), end = lubridate::ymd("2017-06-30"))
 
+cust_int <- cust_by_yr[!is.na(lubridate::mdy(assessment_date)), ]
+cust_int <- cust_int[ , check := ifelse(mdy(assessment_date) %within% interval15, 1, ifelse(mdy(assessment_date) %within% interval16, 1, 0))]
+
+record_inconsistent_1 <- cust_int[check == 0, .N]
 print(record_inconsistent_1)
 
 # give the total count of responses
@@ -189,46 +202,39 @@ print(record_percent_consistent_1)
 
 if (record_inconsistent_1 > 0){
 # get record details
-  record_inconsistent_1_details <-
-    cust_by_yr[is_blank(year_of_birth) & age_class_code != "91" | as.numeric(year_of_birth) <= 1899 & age_class_code != "90", ][ , c("year_of_birth", "age_class_code")]
-
+  record_inconsistent_1_details <- cust_int[int <0, ][, c("beginning_school_year", "assessment_date")]
 
   # read in data
   year_plot_df <- 
     as.data.frame(
       table(record_inconsistent_1_details[[1]], record_inconsistent_1_details[[2]], exclude=NULL), na.rm=FALSE)
+
   
-  # levels(year_plot_df$Var2) <-c("2013","2014","2015","2016")
-  
-  
-# plot inconsistencies by Age Class
-  age_group <- (ggplot(
+# plot inconsistencies by School Year
+  school_year <- (ggplot(
     year_plot_df, aes(Var2, Freq)) +
     geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-    ggtitle("Inconsistent Record Entry by Age Group") +
-    ylab("Age Class") +
-    scale_x_discrete("Year of Birth", drop = "FALSE") +
+    ggtitle("Inconsistent Record Entry by Assessment Date") +
+    ylab("Frequency") +
+    scale_x_discrete("Beginning School Year", drop = "FALSE") +
     theme(panel.background=element_blank()))
-  
-  print(age_group)
-  print(year_plot_df)
-
   }
+
 ```
+
 
 <!--RECORD CONSISTENCY II-->
 ```{r record_consistency_2, include=FALSE, cache=FALSE, eval=record_consistency_2_print}
 # create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_2 <- c("Age Type")
+record_inconsistent_compare_columns_2 <- c("Beginning School Year")
 
 # consistency check definition
 record_inconsistent_compare_2_definition <- 
-  "Check where records with year of birth of prior to 1900 have an age type 90 code. Check where records have a blank year of birth have an age type of 91."
+  "Check where records have birth year after to beginning school year."
 
 # get inconsistent records
-record_inconsistent_2 <-
-  cust_by_yr[is_blank(year_of_birth) & age_type_code != "91" | as.numeric(year_of_birth) <= 1899 & age_type_code != "90", ][ ,.N] # double-check
-
+record_inconsistent_2 <- 
+  cust_by_yr[birth_year >= beginning_school_year][,.N]
 
 print(record_inconsistent_2)
 
@@ -244,7 +250,7 @@ print(record_percent_consistent_2)
 if (record_inconsistent_2 > 0){
 # get record details
   record_inconsistent_2_details <-
-  cust_by_yr[is_blank(year_of_birth) & age_type_code != "91" | as.numeric(year_of_birth) <= 1899 & age_type_code != "90", ][ ,c("year_of_birth", "age_type_code")] # double-check
+    cust_by_yr[birth_year >= beginning_school_year][ , c("beginning_school_year", "birth_year")]
 
   # read in data
   year_plot_df <- 
@@ -255,9 +261,9 @@ if (record_inconsistent_2 > 0){
   age_type <- (ggplot(
     year_plot_df, aes(Var2, Freq)) +
     geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-    ggtitle("Inconsistent Record Entry by Age Type") +
-    ylab("Age Type") +
-    scale_x_discrete("Year of Birth", drop = "FALSE") +
+    ggtitle("Inconsistent Record Entry by Birth Year") +
+    ylab("Birth Year") +
+    scale_x_discrete("School Year", drop = "FALSE") +
     theme(panel.background=element_blank()))
 
   #  theme(text=element_text(size=10), axis.text.x=element_text(angle=90, vjust=1))) +
@@ -271,137 +277,11 @@ if (record_inconsistent_2 > 0){
 ```
 
 
-<!--RECORD CONSISTENCY III-->
-```{r record_consistency_3, include=FALSE, cache=FALSE, eval=record_consistency_3_print}
-# create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_3 <- c("Age Group Code")
-
-# consistency check definition
-record_inconsistent_compare_3_definition <- 
-  "Check where records with year of birth of prior to 1900 have an age group 90 code. Check where records have a blank year of birth have an age group of 91."
-
-
-# get inconsistent records
-record_inconsistent_3 <-   
-cust_by_yr[is_blank(year_of_birth) & age_group_code != "91" | as.numeric(year_of_birth) <= 1899 & age_group_code != "90", ][ ,.N] # double-check
-
-
-print(record_inconsistent_3)
-
-# give the total count of responses
-print(total_record_count)
-
-# calculate the percent of the variable which is consistent
-record_percent_consistent_3 <- 
-  truncate(((total_record_count - record_inconsistent_3)/total_record_count)*100, prec = 2)
-
-print(record_percent_consistent_3)
-
-if (record_inconsistent_2 > 0){
-# get record details
-  record_inconsistent_3_details <-
-    cust_by_yr[is_blank(year_of_birth) & age_group_code != "91" | as.numeric(year_of_birth) <= 1899 & age_group_code != "90", ][ , c("year_of_birth", "age_group_code")]
-
-  # read in data
-  b_year_plot_df <- 
-    as.data.frame(
-      table(record_inconsistent_3_details[[1]], record_inconsistent_3_details[[2]]))
-  
-  # plot inconsistencies by School Year
-  birth_year <- (ggplot(
-    year_plot_df, aes(Var2, Freq)) +
-    geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-    ggtitle("Inconsistent Record Entry by Age Group Code") +
-    ylab("Age Group Code") +
-    scale_x_discrete("Year of Birth", drop = "FALSE") +
-    theme(panel.background=element_blank()))
-
-  #  theme(text=element_text(size=10), axis.text.x=element_text(angle=90, vjust=1))) +
-  #  theme(axis.text.x = element_text(angle=90, vjust=0.5, size=2))
-  
-  print(birth_year)
-  print(table(b_year_plot_df))
-
-}
-
-```
-
-<!--LONGITUDINAL CONSISTENCY I-->
-```{r longitudinal_consistency_1, include=FALSE, cache=FALSE, eval=longitudinal_consistency_1_print}
-
-# Does Year of Birth ever change for a unique ID? 
-
-comp_set <- 
-  cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id]
-[N> 1, .N , by = c("unique_id") ]
-
-longitudinal_inconsistent_1 <-      # [N>,][,.N]
-
-  
-
-longitudinal_inconsistent_count_1 <- 
-  nrow(longitudinal_inconsistent_1)
-
-longitudinal_percent_consistent_1 <- 
-  truncate(((total_person_count - longitudinal_inconsistent_count_1)/total_person_count)*100, prec = 2)
-
-print(longitudinal_percent_consistent_1)
-
-# convert dataframe column to a single-quoted, comma-delimited string for use in next SQL query
-unique_id_list <- 
-  cust_by_year[, .N , by = c("uniqueID", "year_of_birth")][N>1,uniqueID]
-  
-
-# get record details
-longitudinal_inconsistent_1_details <- cust_by_year[uniqueID %in% unique_id_list,c("uniqueID", "year_of_birth")]
-  
-# read in data
-year_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-levels(year_plot_df$Var1) <-
-  c("2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015")
-
-# plot inconsistencies by School Year
-
-  school_year <- (ggplot(
-  year_plot_df, aes(Var1, Freq)) +
-  geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by School Year") +
-  scale_x_discrete("School Year", drop = FALSE) +
-  ylab("Students") + 
-  theme(panel.background=element_blank()))
-
-
-# read in data
-division_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[4]], longitudinal_inconsistent_1_details[[2]]))
-
-# plot inconsistencies by School Division
-  division <- (ggplot(
-  head(division_plot_df[order(-division_plot_df$Freq),], n=20), aes(Var1, Freq)) +
-  geom_bar(stat="identity",  fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by School Division") +
-  xlab("School Division") +
-  ylab("Students") +
-  theme(panel.background=element_blank()))
-  print(school_year)
-  print(division)
-
-```
-
-
-
-
-
-
 
 <!-- START PRINTING OUTPUT HERE -->
 
 <!--PRINT SUMMARY OF DATA ELEMENT-->
-```{r printelementsummary, echo=FALSE, results="asis", cache=FALSE}
+```{r printelementsummary, echo=FALSE, results="asis"}
 cat(paste("<hr size='30'>",
           "<h2>SUMMARY OF DATA ELEMENT</h2>",
           "<table><col width='300'><col width='600'>",
@@ -411,18 +291,18 @@ cat(paste("<hr size='30'>",
           htmlTable(column_valid_values, rnames=FALSE, css.cell = 'vertical-align: top;', align = 'lll'),
           "</div></td><td>"))
 ```
-```{r, ref.label="uniqueness", echo=FALSE, cache=FALSE, eval=uniqueness_print}
+```{r, ref.label="uniqueness", echo=FALSE, eval=uniqueness_print}
 ```
 ```{r, echo=FALSE, results="asis"}
 cat(paste("</td></tr></table><hr />"))
 ```
 
 <!--PRINT SUMMARY OF RESULTS-->
-```{r printresultssummary, echo=FALSE, results="asis", cache=FALSE}
+```{r printresultssummary, echo=FALSE, results="asis"}
 cat(paste(
   "<h2>DATA ANALYTICS SUMMARY OF RESULTS</h2>",
   "<table style='border-top: solid 2px grey; border-bottom: solid 2px grey; margin-top: 10px' width='100%'><col width='40%'><col width='50%'><col width='10%'>",
-  "<tr style='text-align: left'><th>Test</th><th>Measurementvalues</th><th>Value</th></tr>"
+  "<tr style='text-align: left'><th>Test</th><th>Measurement Values</th><th>Value</th></tr>"
    ))
 if (completeness_print){
   cat(paste("<tr style='border-top: solid 1px grey'><td style='padding-bottom: .25em'>Completeness</td><td style='padding-bottom: .25em'>Number of missing values</td><td style='padding-bottom: .25em'>", missing, "</td></tr>"))
@@ -459,7 +339,7 @@ cat(paste("</table><hr />"))
 ```
 
 <!--PRINT UNIQUENESS-->
-```{r printuniqueness, echo=FALSE, results="asis", cache=FALSE, eval=uniqueness_print}
+```{r printuniqueness, echo=FALSE, results="asis", eval=uniqueness_print}
 cat(paste("<h2>UNIQUENESS</h2>",
           "<h3>A frequency distribution of values for", column_name_print, ".</h3>",
           "A basic", column_name_print, "distribution plot is shown giving the frequency of the values", 
@@ -468,16 +348,16 @@ cat(paste("<h2>UNIQUENESS</h2>",
           "<br><br>**Number of unique values", unique_values, "**",
           "<br><br>"))
 ```
-```{r ref.label="uniqueness", cache=FALSE, echo=uniqueness_print, eval=uniqueness_print}
+```{r ref.label="uniqueness", echo=uniqueness_print, eval=uniqueness_print}
 ```
-```{r ref.label="frequencies", cache=FALSE, echo=uniqueness_print, eval=uniqueness_print}
+```{r ref.label="frequencies", echo=uniqueness_print, eval=uniqueness_print}
 ```
 ```{r, echo=FALSE, results="asis", eval=uniqueness_print}
 cat("<hr />")
 ```
 
 <!--PRINT COMPLETENESS-->
-```{r, echo=FALSE, results="asis", cache=FALSE, eval=completeness_print}
+```{r, echo=FALSE, results="asis", eval=completeness_print}
 cat(paste("<h2>COMPLETENESS</h2>",
           "<h3>Find records with missing values for", column_name_print, ".</h3>",
           "The completeness of the data simply refers to whether or not there are missing or NULL values.",
@@ -487,14 +367,14 @@ cat(paste("<h2>COMPLETENESS</h2>",
           "<br><br>**Percent Complete", percent_complete, "%**",
           "<br><br>"))
 ```
-```{r, ref.label="completeness", cache=FALSE, echo=completeness_print, eval=completeness_print}
+```{r, ref.label="completeness", echo=completeness_print, eval=completeness_print}
 ```
-```{r, echo=FALSE, results="asis", cache=FALSE, eval=completeness_print}
+```{r, echo=FALSE, results="asis",  eval=completeness_print}
 cat("<hr />")
 ```
 
 <!--PRINT VALUE VALIDITY-->
-```{r, echo=FALSE, results="asis", cache=FALSE, eval=validity_print}
+```{r, echo=FALSE, results="asis", eval=validity_print}
 cat(paste("<h2>VALUE VALIDITY</h2>",
           "<h3>Find records with invalid values for", column_name_print, ".</h3>",
           "Value validity checks that every value within the dataset is one of the allowed values.",
@@ -511,56 +391,7 @@ cat("<hr />")
 ```
 
 
-<!--PRINT RECORD CONSISTENCY I-->
-```{r, echo=FALSE, results="asis", eval=record_consistency_1_print}
-cat(paste("<h2>RECORD CONSISTENCY I</h2>",
-          "<h3>Find Records with an inconsistent relationship between", column_name_print,
-          "and", paste(record_inconsistent_compare_columns_1, collapse = " and "),
-          ".</h3>",
-          record_inconsistent_compare_1_definition,
-          "<br><br>**Number Inconsistent:", record_inconsistent_1, "**",
-          "<br><br>**Percent Consistent:", record_percent_consistent_1, "%**",
-          "<br><br>"))
-```
-```{r, ref.label="record_consistency_1", echo=record_consistency_1_print, eval=record_consistency_1_print}
-```
-```{r, echo=FALSE, results="asis", eval=record_consistency_1_print}
-cat("<hr />")
-```
 
-<!--PRINT RECORD CONSISTENCY II-->
-```{r, echo=FALSE, results="asis", eval=record_consistency_2_print}
-cat(paste("<h2>RECORD CONSISTENCY II</h2>",
-          "<h3>Find Records with an inconsistent relationship between", column_name_print,
-          "and", paste(record_inconsistent_compare_columns_2, collapse = " and "),
-          ".</h3>",
-          record_inconsistent_compare_2_definition,
-          "<br><br>**Number Inconsistent:", record_inconsistent_2, "**",
-          "<br><br>**Percent Consistent:", record_percent_consistent_2, "%**",
-          "<br><br>"))
-```
-```{r, ref.label="record_consistency_2", echo=record_consistency_2_print, eval=record_consistency_2_print}
-```
-```{r, echo=FALSE, results="asis", eval=record_consistency_2_print}
-cat("<hr />")
-```
-
-<!--PRINT RECORD CONSISTENCY III-->
-```{r, echo=FALSE, results="asis", eval=record_consistency_3_print}
-cat(paste("<h2>RECORD CONSISTENCY III</h2>",
-          "<h3>Find Records with an inconsistent relationship between", column_name_print,
-          "and", paste(record_inconsistent_compare_columns_3, collapse = " and "),
-          ".</h3>",
-          record_inconsistent_compare_3_definition,
-          "<br><br>**Number Inconsistent:", record_inconsistent_3, "**",
-          "<br><br>**Percent Consistent:", record_percent_consistent_3, "%**",
-          "<br><br>"))
-```
-```{r, ref.label="record_consistency_3", echo=record_consistency_3_print, eval=record_consistency_3_print}
-```
-```{r, echo=FALSE, results="asis", eval=record_consistency_3_print}
-cat("<hr />")
-```
 
 
 
