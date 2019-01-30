@@ -46,7 +46,7 @@ printname <- function(x){
 <!--GLOBAL VARIABLES-->
 ```{r datasets, include=FALSE}
 # loading in data here - not sure where to put it
-cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DOE/VPI+.csv", colClasses = "character")
+cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DOE/Unique Students Listing.csv", colClasses = "character")
 colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
 
 dictionary <- data.table::fread("~/git/vecf_counts/data/original/ExportedValues_cols_of_interest.csv")
@@ -57,8 +57,8 @@ colnames(dictionary) <- standard_col_names(colnames(dictionary))
 ```{r global_variables, include = FALSE}
 
 # set the column name, table name, and demographic table name
-column_name = "birth year"
-table_name = "DOE VPI+"
+column_name = "school year"
+table_name = "DOE Student Listings"
 column_name_print <- printname(column_name)
 record_inconsistent_1 = "NA"
 record_percent_consistent_1 = "NA"
@@ -76,7 +76,7 @@ validity_print = TRUE
 record_consistency_1_print = TRUE
 record_consistency_2_print = TRUE
 record_consistency_3_print = FALSE
-longitudinal_consistency_1_print = TRUE
+longitudinal_consistency_1_print = FALSE
 longitudinal_consistency_2_print = FALSE
 ```
 
@@ -100,26 +100,25 @@ title: "`r paste(table_name,  " - ", column_name_print, "Report")`"
 ```{r metadata, include=FALSE}
 column_description <- "custom text"
 
-column_valid_values <- tibble::tibble("Year" = c(2010:2012))
-  #dictionary[agency_name == "Virginia Department of Education"][view_name == "VPI+"][column_name == "Birth Month"][,c("value", "description")]
+column_valid_values <- dictionary[agency_name == "Virginia Department of Education"][view_name == "Unique Students Listing"][column_name == "School Year"][,c("value", "description")]
 ```
 
 
 <!--UNIQUENESS-->
 ```{r uniqueness, include=FALSE, eval=uniqueness_print}
-values <-  cust_by_yr[!is_blank(birth_year), birth_year]
+values <-  cust_by_yr[!is_blank(school_year)|school_year %in% column_valid_values$value, school_year]
 
 unique_values <- 
   length(unique(values))
 
 # frequency distribution table of active_status values
-frequencies <- as.data.table(table(values))
+frequencies <- as.data.table(table( values))
 
 # frequency distribution plot of active_status values
 ggplot(frequencies, aes(values, N)) +
   geom_bar(stat = "identity", fill ="paleturquoise4", width=.7) +
   coord_flip() +ggtitle(paste(column_name_print, "Value Distribution")) +
-  xlab("Birth Year") +
+  xlab("Beginning School Year") +
   ylab("Number of Students") +
   theme(panel.background=element_blank())
 
@@ -132,7 +131,7 @@ print(head(frequencies))
 
 <!--COMPLETENESS-->
 ```{r completeness, include=FALSE, eval=completeness_print}
-missing <- cust_by_yr[is_blank(birth_year), .N]
+missing <- cust_by_yr[is_blank(school_year), .N]
 
 print(missing)
 
@@ -148,7 +147,7 @@ print(percent_complete, row.names = FALSE)
 
 <!--VALUE VALIDITY-->
 ```{r validity, include=FALSE, eval=validity_print}
-invalid = cust_by_yr[is_blank(birth_year)|!birth_year %in% as.character(c(2010:2019)), .N]
+invalid = cust_by_yr[is_blank(school_year)|!school_year %in% column_valid_values$value, .N]
   
 # get number of rows with invlaid values for active_status
 print(invalid)
@@ -163,8 +162,8 @@ print(percent_valid, row.names = FALSE)
 if (invalid > 0){
 # get record details
   invalid_details <-
-    cust_by_yr[is_blank(birth_year)|!birth_year %in% as.character(c(2010:2019)),
-               c("unique_id", "birth_year", "school" )] 
+    cust_by_yr[!is_blank(school_year)|!school_year %in% column_valid_values$value,
+               c("unique_id", "school_year", "division_number_reporting_school_numbe" )] 
  print(invalid_details) 
 }
 
@@ -175,18 +174,24 @@ if (invalid > 0){
 ```{r record_consistency_1, include=FALSE, cache=FALSE, eval=record_consistency_1_print}
 
 # create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_1 <- c("Assessment Year")
+record_inconsistent_compare_columns_1 <- c("Entry Date")
 
 # consistency check definition
 record_inconsistent_compare_1_definition <- 
-  "Check if there any records that have an assessment date before birth year."
+  "Check if there any records that have an entry date outside of the given school year."
 
 # get inconsistent records
+# cust_by_yr <- cust_by_yr[, interval := lubridate::interval(start = lubridate::ymd(paste0(school_year, "-07-01")), end = lubridate::ymd(paste0(school_year, "06-30")))]
+# #interval16 <- interval(start = lubridate::ymd("2016-07-01"), end = lubridate::ymd("2017-06-30"))
 
-cust_int <- cust_by_yr[!is.na(lubridate::mdy(assessment_date)) & !is_blank(birth_year), ]
-cust_int <- cust_int[lubridate::year(mdy(assessment_date)) <= as.numeric(birth_year), ]
 
-record_inconsistent_1 <- cust_int[, .N]
+cust_by_yr <- cust_by_yr[, interval := lubridate::interval(start = lubridate::ymd(paste0(school_year, "-07-01")), end = lubridate::ymd(paste0(school_year+1, "06-30")))]
+
+cust_int <- cust_by_yr[!is.na(lubridate::ymd(lubridate::as_date(entry_date))), ][ , check := ifelse(ymd(as_date(entry_date)) %within% interval, 1,  0)]
+
+
+
+record_inconsistent_1 <- cust_int[check == 0, .N]
 print(record_inconsistent_1)
 
 # give the total count of responses
@@ -200,7 +205,7 @@ print(record_percent_consistent_1)
 
 if (record_inconsistent_1 > 0){
 # get record details
-  record_inconsistent_1_details <- cust_int[int <0, ][, c("birth_year", "assessment_date")]
+  record_inconsistent_1_details <- cust_int[int <0, ][, c("school_year", "assessment_date")]
 
   # read in data
   year_plot_df <- 
@@ -214,7 +219,7 @@ if (record_inconsistent_1 > 0){
     geom_bar(stat="identity", fill ="honeydew3", width=.7) +
     ggtitle("Inconsistent Record Entry by Assessment Date") +
     ylab("Frequency") +
-    scale_x_discrete("Birth Year", drop = "FALSE") +
+    scale_x_discrete("Beginning School Year", drop = "FALSE") +
     theme(panel.background=element_blank()))
   }
 
@@ -224,7 +229,7 @@ if (record_inconsistent_1 > 0){
 <!--RECORD CONSISTENCY II-->
 ```{r record_consistency_2, include=FALSE, cache=FALSE, eval=record_consistency_2_print}
 # create a list of the other columns to which the column is being compared
-record_inconsistent_compare_columns_2 <- c("Beginning School Year")
+record_inconsistent_compare_columns_2 <- c("Birth Year")
 
 # consistency check definition
 record_inconsistent_compare_2_definition <- 
@@ -232,7 +237,7 @@ record_inconsistent_compare_2_definition <-
 
 # get inconsistent records
 record_inconsistent_2 <- 
-  cust_by_yr[birth_year >= beginning_school_year][,.N]
+  cust_by_yr[birth_year >= school_year][,.N]
 
 print(record_inconsistent_2)
 
@@ -248,7 +253,7 @@ print(record_percent_consistent_2)
 if (record_inconsistent_2 > 0){
 # get record details
   record_inconsistent_2_details <-
-    cust_by_yr[birth_year >= beginning_school_year][ , c("beginning_school_year", "birth_year")]
+    cust_by_yr[birth_year >= school_year][ , c("school_year", "birth_year")]
 
   # read in data
   year_plot_df <- 
@@ -274,64 +279,6 @@ if (record_inconsistent_2 > 0){
 
 ```
 
-
-<!--LONGITUDINAL CONSISTENCY I-->
-```{r longitudinal_consistency_1, include=FALSE, cache=FALSE, eval=longitudinal_consistency_1_print}
-
-longitudinal_inconsistent_1 <- cust_by_yr[, .N, by = list(birth_year, unique_id)][, .N, by = list(unique_id)][N>1]
-
-longitudinal_inconsistent_count_1 <- 
-  nrow(longitudinal_inconsistent_1)
-
-longitudinal_percent_consistent_1 <- 
-  truncate(((total_person_count - longitudinal_inconsistent_count_1)/total_person_count)*100, prec = 2)
-
-print(longitudinal_percent_consistent_1)
-
-# convert dataframe column to a single-quoted, comma-delimited string for use in next SQL query
-unique_id_list <- 
-  paste0("'", paste0(longitudinal_inconsistent_1$unique_id, collapse = "','"), "'")
-
-if (longitudinal_inconsistent_count_1 > 0){
-# get record details
-longitudinal_inconsistent_1_details <- cust_by_yr[unique_id %in% longitudinal_inconsistent_1,c("unique_id", "birth_year", "school")]
-
-# read in data
-year_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-#levels(year_plot_df$Var1) <-  c("2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015")
-
-# plot inconsistencies by School Year
-
-school_year <- (ggplot(
-  year_plot_df, aes(Var1, Freq)) +
-  geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by Birth Year") +
-  scale_x_discrete("Birth Year", drop = FALSE) +
-  ylab("Students") + 
-  theme(panel.background=element_blank()))
-
-
-# read in data
-division_plot_df <- 
-  as.data.frame(
-    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-# plot inconsistencies by School Division
-  division <- (ggplot(
-  head(division_plot_df[order(-division_plot_df$Freq),], n=20), aes(Var1, Freq)) +
-  geom_bar(stat="identity",  fill ="honeydew3", width=.7) +
-  ggtitle("Students with Inconsistent Item Entry by School ") +
-  xlab("School ") +
-  ylab("Students") +
-  theme(panel.background=element_blank()))
-  print(school_year)
-  print(division)
-
-  }
-```
 
 
 <!-- START PRINTING OUTPUT HERE -->
@@ -447,23 +394,6 @@ cat("<hr />")
 ```
 
 
-<!--PRINT LONGITUDINAL CONSISTENCY I-->
-```{r longitudinal_consistency_1_print_1, echo=FALSE, results="asis", cache=FALSE, eval=longitudinal_consistency_1_print}
-cat(paste("<h2>LONGITUDINAL CONSISTENCY I</h2>",
-          "<h3>An inconsistency in the data is checked over time (longitudinal),",
-          "to see if the same value is recorded for every new record. For", column_name_print, 
-          "this would be if a student recorded as one", column_name_print, 
-          "one year but another", column_name_print, "the next year.",
-          ".</h3>",
-          "<br><br>**Individuals with Inconsistent Records:", longitudinal_inconsistent_count_1, "**",
-          "<br><br>**Percent Consistent:", longitudinal_percent_consistent_1, "%**",
-          "<br><br>"))
-```
-```{r longitudinal_consistency_1_print_2, ref.label="longitudinal_consistency_1", cache=FALSE, echo=longitudinal_consistency_1_print, eval=longitudinal_consistency_1_print}
-```
-```{r longitudinal_consistency_1_print_3, echo=FALSE, results="asis", cache=FALSE, eval=longitudinal_consistency_1_print}
-cat("<hr />")
-```
 
 
 

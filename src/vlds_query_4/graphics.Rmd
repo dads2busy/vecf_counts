@@ -1,0 +1,57 @@
+---
+title: "Graphics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE)
+
+library(readxl)
+library(data.table)
+library(dataplumbr)
+
+
+VCEF_ftable <- as.data.table(read_excel("~/git/vecf_counts/data/working/VCEF_ftable.xlsx"))
+```
+
+## Snap & OCS
+
+```{r cars}
+
+snap_ocs <- VCEF_ftable[Set == "snap & ocs",]
+snap_ocs_graph <- melt(snap_ocs, id = "Demographic", measure = patterns("20"), value.name = "N")
+###
+ggplot(snap_ocs_graph) + 
+  geom_bar(stat = "identity", mapping = aes(variable, N, fill = Demographic))
+
+```
+
+
+## Snap & VPIP
+
+```{r cars}
+
+snap_vpip <- VCEF_ftable[Set == "snap & vpip",]
+snap_vpip_graph <- reshape2::melt(snap_vpip, id.vars = "Demographic", measure.vars = patterns("20"))
+###
+ggplot(snap_vpip_graph) + 
+  geom_bar(stat = "identity", mapping = aes(Demographic, value, fill = variable), position = "dodge")
+
+```
+
+## Snap & Foster
+
+```{r cars}
+
+snap_foster <- VCEF_ftable[Set == "snap & foster",]
+snap_fost_graph <- reshape2::melt(snap_foster, id.vars = "Demographic", measure.vars = patterns("20"))
+###
+ggplot(snap_fost_graph, mapping = aes(variable, value, group=Demographic, color = Demographic)) + 
+  geom_line() +
+  geom_point() 
+
+```
+
+
+
+
