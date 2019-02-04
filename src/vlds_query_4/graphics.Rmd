@@ -13,6 +13,9 @@ library(data.table)
 library(dataplumbr)
 library(RColorBrewer)
 library(ggplot2)
+library(knitr)
+library(kableExtra)
+
 
 VCEF_ftable <- as.data.table(read_excel("~/git/vecf_counts/data/working/VCEF_ftable.xlsx"))
 ```
@@ -29,6 +32,13 @@ style <- list(
 )
 ```
 
+#### Table
+
+```{r}
+kable(VCEF_ftable) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 
 #### Snap & OCS
 
@@ -39,19 +49,41 @@ snap_ocs_graph <- melt(snap_ocs, id = "Demographic", measure = patterns("20"), v
 
 ### Labels
 labs <-  labs(
-    title = paste("SOC OCS data"), 
-    subtitle = paste("Only 2016 data appears to be available."),
+    title = paste("SOC OCS 2016"), 
+    #subtitle = paste("Only 2016 data appears to be available."),
     caption = "Data from VLDS.",
     y = paste("Number of Observations (Services Rendered)"),
-    x = paste("Year of Service"),
+    x = paste("Demographic"),
     fill = "Demographic"
   ) 
 
 ### Plot
 ggplot(snap_ocs_graph) + 
-  geom_bar(stat = "identity", mapping = aes(variable, N, fill = stringr::str_sub(Demographic, 1, 5))) +
-  style + labs
+  geom_bar(stat = "identity", mapping = aes(Demographic, N)) + 
+  # scale_fill_brewer(palette = "GnBu") + 
+   theme_minimal()  + labs + 
+  scale_x_discrete(labels = function(x) lapply(strwrap(x, width = 25, simplify = FALSE), paste, collapse="\n")) + 
+  theme(text=element_text(size = 12, family = "Sans", face = "bold") , axis.text.x = element_text(size = 11, angle = 90, vjust = 1 ))
 
+```
+
+
+
+```{r}
+# ## Alternative
+# snap_ocs_graph[, Race := ifelse(grepl( pattern = "black", x = Demographic), "Black", 
+#                                  ifelse(grepl(pattern = "white", x = Demographic), "White",
+#                                         ifelse(grepl(pattern = "race not reported", x = Demographic), "Not Reported", 
+#                                                ifelse(grepl(pattern = "other", x = Demographic), "Other", "0")) ) ) ]
+# snap_ocs_graph[, Ethnicity := ifelse(grepl(pattern = "not hispanic or latino" , x = Demographic), "Not H/L", 
+#                                      ifelse(grepl(pattern = "hispanic or latino not reported", x = Demographic), "Not H/L",
+#                                             ifelse(grepl(pattern = "hispanic or latino", x = Demographic), "H/L", "0"))) ]
+# 
+# ggplot(snap_ocs_graph) + 
+#   geom_bar(stat = "identity", mapping = aes(Race, N, fill = Ethnicity), position = "dodge") + 
+#   theme_minimal() + labs + style + 
+#   scale_x_discrete(labels = function(x) lapply(strwrap(x, width = 10, simplify = FALSE), paste, collapse="\n")) + 
+#   theme(text=element_text(size = 12, family = "Sans", face = "bold") , axis.text.x = element_text(size = 11, angle = 90, vjust = 1))    
 
 ```
 
@@ -63,22 +95,29 @@ ggplot(snap_ocs_graph) +
 snap_vpip <- VCEF_ftable[Set == "snap & vpip",]
 snap_vpip_graph <- reshape2::melt(snap_vpip, id.vars = "Demographic", measure.vars = patterns("20"))
 
+snap_vpip_graph[, Race := ifelse(grepl( pattern = "black", x = Demographic), "Black", 
+                                 ifelse(grepl(pattern = "white", x = Demographic), "White",
+                                        ifelse(grepl(pattern = "race not reported", x = Demographic), "Not Reported", 
+                                               ifelse(grepl(pattern = "other", x = Demographic), "Other", "0")) ) ) ]
+snap_vpip_graph[, Ethnicity := ifelse(grepl(pattern = "not hispanic or latino" , x = Demographic), "Not H/L", 
+                                     ifelse(grepl(pattern = "hispanic or latino not reported", x = Demographic), "Not H/L",
+                                            ifelse(grepl(pattern = "hispanic or latino", x = Demographic), "H/L", "0"))) ]
+
 ### Labels
 labs <-  labs(
     title = paste("SOC VPIP data"), 
     subtitle = paste("Only 2015 & 2016 data appears to be available."),
     caption = "Data from VLDS.",
     y = paste("Number of Observations"),
-    x = paste("Demographic"),
-    fill = "Year"
+    x = paste("Race"),
+    fill = "Ethnicity"
   ) 
 
 
 ### Plot
 ggplot(snap_vpip_graph) + 
-  geom_bar(stat = "identity", mapping = aes(stringr::str_sub(Demographic, 1,5), value, fill = variable), position = "dodge") + 
-  style + labs # +
-  #scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 10))
+  geom_bar(stat = "identity", mapping = aes(Race, value, fill = Ethnicity), position = "dodge") +
+  style + labs 
 
 ```
 
@@ -88,23 +127,32 @@ ggplot(snap_vpip_graph) +
 ### Data
 snap_foster <- VCEF_ftable[Set == "snap & foster",]
 snap_fost_graph <- reshape2::melt(snap_foster, id.vars = "Demographic", measure.vars = patterns("20"))
-snap_fost_graph <- snap_fost_graph[, Demographic :=stringr::str_sub(Demographic, 1,5)][, sum(value), by = c("Demographic", "variable")]
+#snap_fost_graph <- snap_fost_graph[, Demographic :=stringr::str_sub(Demographic, 1,5)][, sum(value), by = c("Demographic", "variable")]
+
+
+snap_fost_graph[, Race := ifelse(grepl( pattern = "black", x = Demographic), "Black", 
+                                 ifelse(grepl(pattern = "white", x = Demographic), "White",
+                                        ifelse(grepl(pattern = "race not reported", x = Demographic), "Not Reported", 
+                                               ifelse(grepl(pattern = "other", x = Demographic), "Other", "0")) ) ) ]
+snap_fost_graph[, Ethnicity := ifelse(grepl(pattern = "not hispanic or latino" , x = Demographic), "Not H/L", 
+                                     ifelse(grepl(pattern = "hispanic or latino not reported", x = Demographic), "Not H/L",
+                                            ifelse(grepl(pattern = "hispanic or latino", x = Demographic), "H/L", "0"))) ]
 
 
 ### Labels
 labs <-  labs(
     title = paste("SOC Foster data"), 
-    subtitle = paste("No 2016 data appears to be available."),
+    #subtitle = paste("No 2016 data appears to be available."),
     caption = "Data from VLDS.",
     y = paste("Number of Observations"),
-    x = paste("Year of Service"),
-    fill = "Demographic"
+    x = paste("Race & Year of Service"),
+    fill = "Ethnicity"
   ) 
 
 ###Plot
-ggplot(snap_fost_graph, mapping = aes(variable, V1, group=Demographic, color = Demographic)) + 
-  geom_line() +
-  geom_point() +
+ggplot(snap_fost_graph) + 
+  geom_bar(stat = "identity", mapping = aes(variable, value, fill = Ethnicity), position = "dodge") + 
+  facet_grid(~Race) + 
   style + labs +
   scale_color_brewer(palette = "GnBu")
 
