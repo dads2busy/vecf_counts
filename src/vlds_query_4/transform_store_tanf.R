@@ -13,6 +13,7 @@ if (nrow(id_yr_loc_grt1) > 0) {
 }
 
 cust_by_yr[, county_fips_code_no := paste("county_fips_code", seq_len(.N), sep="_"), by=c("unique_id", "study_group_id", "calendar_year_number")]
+
 cust_by_yr[, zip_code_no := paste("zip_code", seq_len(.N), sep="_"), by=c("unique_id", "study_group_id", "calendar_year_number")]
 fips <- dcast(cust_by_yr, unique_id + study_group_id + calendar_year_number ~ county_fips_code_no, value.var=c("county_fips_code"))
 zips <- dcast(cust_by_yr, unique_id + study_group_id + calendar_year_number ~ zip_code_no, value.var=c("zip_code"))
