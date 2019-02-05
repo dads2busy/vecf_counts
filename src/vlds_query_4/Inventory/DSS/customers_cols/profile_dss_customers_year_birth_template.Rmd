@@ -46,7 +46,7 @@ printname <- function(x){
 cust_by_yr <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS Customers By Year.csv", colClasses = "character")
 colnames(cust_by_yr) <- standard_col_names(colnames(cust_by_yr))
 
-dictionary <- standard_col_names(data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv"))
+dictionary <- data.table::fread("~/git/vecf_counts/data/original/ExportedValues.csv")
 colnames(dictionary) <- standard_col_names(colnames(dictionary))
 
 ```
@@ -331,16 +331,16 @@ if (record_inconsistent_2 > 0){
 
 # Does Year of Birth ever change for a unique ID? 
 
-comp_set <- 
-  cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id]
-[N> 1, .N , by = c("unique_id") ]
+comp_set <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id][N > 1, .(unique_id)]
+# cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id]
+# [N> 1, .N , by = c("unique_id") ]
 
-longitudinal_inconsistent_1 <-      # [N>,][,.N]
+longitudinal_inconsistent_1 <- comp_set[, .N]    # [N>,][,.N]
 
   
 
-longitudinal_inconsistent_count_1 <- 
-  nrow(longitudinal_inconsistent_1)
+longitudinal_inconsistent_count_1 <- longitudinal_inconsistent_1
+  #nrow(longitudinal_inconsistent_1)
 
 longitudinal_percent_consistent_1 <- 
   truncate(((total_person_count - longitudinal_inconsistent_count_1)/total_person_count)*100, prec = 2)

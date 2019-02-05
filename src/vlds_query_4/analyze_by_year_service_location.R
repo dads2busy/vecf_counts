@@ -1,0 +1,156 @@
+#' FUNCTIONS ----
+#+ load_libraries, warning=FALSE, message=FALSE
+library(data.table)
+library(dataplumbr)
+library(tidycensus)
+library(sf)
+library(ggplot2)
+library(here)
+library(knitr)
+library(kableExtra)
+
+#' DSS RECORDS ----
+#' Load DSS records and standardize column names
+#+ dss_customers_load_rename, cache=TRUE, message=FALSE
+dss_customers_by_year <- fread(here("data/original/q4/DSS/DSS Customers By Year.csv"), colClasses = "character")
+colnames(dss_customers_by_year) <- standard_col_names(colnames(dss_customers_by_year))
+
+#' fix a misspelling for future joining
+#+ fix_misspelling
+colnames(dss_customers_by_year)[colnames(dss_customers_by_year) == "calender_year_number"] <- "calendar_year_number"
+
+#' subset to just the data columns needed
+#+ dss_customers_subset
+dss_customers_by_year_sub <- 
+  dss_customers_by_year[, .(unique_id,
+                            calendar_year_number,
+                            snap_case_indicator,
+                            tanf_case_indicator,
+                            foster_care_case_indicator)]
+
+# print table
+kable(dss_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+
+#' OCS RECORDS ----
+#' Load OCS records and standardize column names
+#+ ocs_services_load_rename, cache=TRUE, message=FALSE
+ocs_services_by_year <- fread(here("data/original/q4/OCS/OCS Services By Year.csv"), colClasses = "character")
+colnames(ocs_services_by_year) <- standard_col_names(colnames(ocs_services_by_year))
+
+#' Group the OCS service records by year to create a single record per customer per year
+#+ ocs_services_group_by_yr
+ocs_customers_by_year <- ocs_services_by_year[, .(ocs_service_entries = .N), .(unique_id, program_year)]
+
+# print table
+kable(ocs_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+
+#' Join the DSS and OCS records
+#+ join_dss_ocs
+colnames(ocs_customers_by_year)[colnames(ocs_customers_by_year) == "program_year"] <- "calendar_year_number"
+dss_ocs_cust_by_year <- merge(dss_customers_by_year_sub, ocs_customers_by_year, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+
+#' add a service indicator variable for later use
+#+ create_ocs_service_indicator
+dss_ocs_cust_by_year[!is.na(ocs_service_entries), ocs_indicator := "Y"]
+dss_ocs_cust_by_year[is.na(ocs_service_entries), ocs_indicator := "N"]
+
+#' SNAP RECORDS ----
+#' Load SNAP records and standardize column names
+#+ snap_customers_by_location_year_load_rename, cache=TRUE, message=FALSE
+snap_cust_by_loc_year <- fread(here("data/original/q4/DSS/DSS SNAP Customers by Year.csv"), colClasses = "character")
+colnames(snap_cust_by_loc_year) <- standard_col_names(colnames(snap_cust_by_loc_year))
+
+#' SNAP records are actually Customer by Year by "Location", so multiple records per customer
+#' if they received benefits in more than one fips code or zip code. As a single record is needed
+#' per customer, additional columns must be created to account for all possible locations.
+#' The number of columns added is based on the customer with the highest number of locations in a
+#' single year. In this case it is six, but the code automatically determines the number.
+#+ convert_to_snap_customers_by_year, cache=TRUE
+# each county fips code gets it's own column, each zip code gets its own column
+snap_cust_by_loc_year[, county_fips_code_no := paste("county_fips_code", seq_len(.N), sep="_"), by=c("unique_id", "study_group_id", "calendar_year_number")]
+snap_cust_by_loc_year[, zip_code_no := paste("zip_code", seq_len(.N), sep="_"), by=c("unique_id", "study_group_id", "calendar_year_number")]
+fips <- dcast(snap_cust_by_loc_year, unique_id + study_group_id + calendar_year_number ~ county_fips_code_no, value.var=c("county_fips_code"))
+zips <- dcast(snap_cust_by_loc_year, unique_id + study_group_id + calendar_year_number ~ zip_code_no, value.var=c("zip_code"))
+snap_cust_by_year <- merge(fips, zips, by=c("unique_id", "study_group_id", "calendar_year_number"))
+
+# print table
+kable(snap_cust_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+
+
+#' Join the DSS, OCS and SNAP records
+#+ join dss_ocs_snap
+dss_ocs_snap_cust_by_year <- merge(dss_ocs_cust_by_year, snap_cust_by_year, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+
+#'
+#+ remove_no_location
+dss_ocs_snap_cust_by_year <- dss_ocs_snap_cust_by_year[!is.na(county_fips_code_1)]
+
+#'
+#+ count_by_year_and_first_fips
+ocs_snap_cnt_fips_by_year <- dss_ocs_snap_cust_by_year[, .N, c("county_fips_code_1", "calendar_year_number")]
+
+# print table
+kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+
+#' Get population by county by year for Virginia
+#+ virginia_population_by_county, message=FALSE, error=FALSE, results="hide"
+va_pop_co_2013 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2013))
+va_pop_co_2013[, year := "2013"]
+colnames(va_pop_co_2013)[colnames(va_pop_co_2013) == 'estimate'] <- 'estimate_2013'
+va_pop_co_2013 <- va_pop_co_2013[, .(GEOID, estimate_2013, year)]
+
+va_pop_co_2014 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2014))
+va_pop_co_2014[, year := "2014"]
+colnames(va_pop_co_2014)[colnames(va_pop_co_2014) == 'estimate'] <- 'estimate_2014'
+va_pop_co_2014 <- va_pop_co_2014[, .(GEOID, estimate_2014, year)]
+
+va_pop_co_2015 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2015))
+va_pop_co_2015[, year := "2015"]
+colnames(va_pop_co_2015)[colnames(va_pop_co_2015) == 'estimate'] <- 'estimate_2015'
+va_pop_co_2015 <- va_pop_co_2015[, .(GEOID, estimate_2015, year)]
+
+va_pop_co_2016 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2016))
+va_pop_co_2016[, year := "2016"]
+colnames(va_pop_co_2016)[colnames(va_pop_co_2016) == 'estimate'] <- 'estimate_2016'
+va_pop_co_2016 <- va_pop_co_2016[, .(GEOID, estimate_2016, year)]
+
+#' Combine Population Counts for Each Year
+#+ join_ocs_snap_cnt_to_pop
+colnames(ocs_snap_cnt_fips_by_year) <- c("GEOID", "year", "N")
+ocs_snap_cnt_fips_by_year[, GEOID := paste0("51", GEOID)]
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2013, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2014, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2015, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2016, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year[, pop_est := gsub("NA", "", paste0(estimate_2013, estimate_2014, estimate_2015, estimate_2016))]
+
+#' Create Index "Idx" as the count of those with both SNAP and OCS in a county for a particular year
+#+ food_benefits_plus_behavioral_issues_per_capita_index_county
+ocs_snap_cnt_fips_by_year <- ocs_snap_cnt_fips_by_year[, .(GEOID, year, snap_plus_ocs = N, pop_est, idx = N/as.numeric(pop_est))]
+
+# print table
+kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+
+#' Create the Nutritional - Behavioral Index Map
+#' Download the Geography
+#+ get_virginia_county_geography, message=FALSE, error=FALSE, results="hide"
+va_geo <- tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2016, geometry = TRUE)
+
+#' Chose year to map and create a standardized index from 0 to 1
+#+ subset_chosen_year_index_data_and_standardize, echo=FALSE, message=FALSE, error=FALSE
+idx_2013 <- data.table::setDF(ocs_snap_cnt_fips_by_year[year=="2013"])
+min_idx_2013 <- min(idx_2013$idx)
+max_idx_2013 <- max(idx_2013$idx)
+idx_2013$idx_z <- (idx_2013$idx - min_idx_2013)/(max_idx_2013-min_idx_2013)
+
+#' Combine the data and geography and create the map
+#+ merge_and_map
+va_geo_idx_2013 <- merge(va_geo, idx_2013, by = "GEOID")
+
+ggplot(data = va_geo_idx_2013) + 
+  geom_sf(aes(fill = idx_z)) + 
+  ggtitle("Nutrition plus Behavioral Assistance", subtitle = "(scaled per capita per county)") +
+  theme(panel.grid.major = element_line(color = gray(0.5), linetype = "dashed", 
+                                        size = 0.5), panel.background = element_rect(fill = "aliceblue"))
+
+
