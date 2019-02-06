@@ -1,0 +1,42 @@
+---
+title: "Distinct Count Cross-Tabulation<br />SNAP - TANF - FOSTER - OCS - VPI+<br />Service By Race/Ethnicity By Year"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE)
+
+library(readxl)
+library(data.table)
+library(dataplumbr)
+library(RColorBrewer)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+
+
+VCEF_ftable <- as.data.table(read_excel("~/git/vecf_counts/data/working/VCEF_ftable.xlsx"))
+```
+
+
+```{r}
+### style guide
+
+style <- list(
+  scale_x_discrete(),
+  scale_y_continuous(), 
+  scale_fill_brewer(palette = "GnBu"),  
+  theme(text=element_text(size = 16, family = "Sans", face = "bold")),theme_minimal() 
+)
+```
+
+#### Table
+
+```{r}
+kable(VCEF_ftable) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+

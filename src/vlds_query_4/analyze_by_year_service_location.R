@@ -27,7 +27,6 @@ dss_customers_by_year_sub <-
                             snap_case_indicator,
                             tanf_case_indicator,
                             foster_care_case_indicator)]
-
 # print table
 kable(dss_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 
@@ -40,7 +39,6 @@ colnames(ocs_services_by_year) <- standard_col_names(colnames(ocs_services_by_ye
 #' Group the OCS service records by year to create a single record per customer per year
 #+ ocs_services_group_by_yr
 ocs_customers_by_year <- ocs_services_by_year[, .(ocs_service_entries = .N), .(unique_id, program_year)]
-
 # print table
 kable(ocs_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 
@@ -72,7 +70,6 @@ snap_cust_by_loc_year[, zip_code_no := paste("zip_code", seq_len(.N), sep="_"), 
 fips <- dcast(snap_cust_by_loc_year, unique_id + study_group_id + calendar_year_number ~ county_fips_code_no, value.var=c("county_fips_code"))
 zips <- dcast(snap_cust_by_loc_year, unique_id + study_group_id + calendar_year_number ~ zip_code_no, value.var=c("zip_code"))
 snap_cust_by_year <- merge(fips, zips, by=c("unique_id", "study_group_id", "calendar_year_number"))
-
 # print table
 kable(snap_cust_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 
@@ -88,7 +85,6 @@ dss_ocs_snap_cust_by_year <- dss_ocs_snap_cust_by_year[!is.na(county_fips_code_1
 #'
 #+ count_by_year_and_first_fips
 ocs_snap_cnt_fips_by_year <- dss_ocs_snap_cust_by_year[, .N, c("county_fips_code_1", "calendar_year_number")]
-
 # print table
 kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 
@@ -127,7 +123,6 @@ ocs_snap_cnt_fips_by_year[, pop_est := gsub("NA", "", paste0(estimate_2013, esti
 #' Create Index "Idx" as the count of those with both SNAP and OCS in a county for a particular year
 #+ food_benefits_plus_behavioral_issues_per_capita_index_county
 ocs_snap_cnt_fips_by_year <- ocs_snap_cnt_fips_by_year[, .(GEOID, year, snap_plus_ocs = N, pop_est, idx = N/as.numeric(pop_est))]
-
 # print table
 kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 
@@ -144,7 +139,7 @@ max_idx_2013 <- max(idx_2013$idx)
 idx_2013$idx_z <- (idx_2013$idx - min_idx_2013)/(max_idx_2013-min_idx_2013)
 
 #' Combine the data and geography and create the map
-#+ merge_and_map
+#+ merge_and_map, out.width="100%"
 va_geo_idx_2013 <- merge(va_geo, idx_2013, by = "GEOID")
 
 ggplot(data = va_geo_idx_2013) + 

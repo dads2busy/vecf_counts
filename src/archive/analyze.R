@@ -52,3 +52,12 @@ race_black_mutli <-
 
 test <- vdss_snap$unique_id %in% vdss$unique_id
 length(test[test == FALSE])
+
+
+ggplot(
+  year_plot_df, aes(Var1, Freq)) +
+    geom_bar(stat="identity", fill ="honeydew3", width=.7) +
+    ggtitle("Students with Inconsistent Item Entry by School Type Code") +
+    scale_x_discrete("School Type", drop = FALSE) +
+    ylab("Students") + 
+    theme(panel.background=element_blank())
