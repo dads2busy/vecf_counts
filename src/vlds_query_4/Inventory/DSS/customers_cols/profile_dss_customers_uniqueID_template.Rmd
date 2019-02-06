@@ -69,10 +69,8 @@ longitudinal_consistency_2_print = TRUE
 ```{r dataset_totals, include=FALSE, cache=FALSE}
 # get the total count of records
 total_record_count <- nrow(cust_by_yr)
-
 # get the total count of individuals
 total_person_count <- length(unique(cust_by_yr$unique_id))
-
 ```
 
 ---
@@ -81,76 +79,67 @@ title: "`r paste(table_name,  " - ", column_name_print, "Report")`"
 
 <!--METADATA-->
 ```{r metadata, include=FALSE, cache=FALSE}
-column_description <- "custom text"
+column_description <- "Unique ID is DSS's unique identifier. Each value represents a DSS customer. In the DSS Customers dataset, customers can be represented by multiple rows which each summarize the DSS services received by that customer in a given year."
 
-column_valid_values <- "values of 7 digits in length"
-
-#dictionary[agency_name == "Department of Social Services"][view_name == "DSS Customers By Year"][column_name == "Age Class Code"][, c("value", "description")]
+column_valid_values <- "Permissible values are those of 7 digits in length"
 ```
 
 
 <!--UNIQUENESS-->
 ```{r uniqueness, include=FALSE, cache=FALSE, eval=uniqueness_print}
+# find non-blank rows
 values <-  cust_by_yr[!is_blank(unique_id), .(unique_id)]
-
-#unique_values <- length(unique(values))
+# count unique values
 unique_values <- nrow(unique(values))
-# frequency distribution table of active_status values
-#values[, length := nchar(unique_id)][,.N, by = .(length)]
-#%>% mutate(length = nchar(unique_id)) %>% group_by(length) %>% summarise(n = n())
+# frequency distribution table of unique id's
 frequencies = as.data.frame(table(values))
 
 # frequency distribution plot of active_status values
-ggplot(frequencies, aes( Freq)) +
+ggplot(frequencies, aes(Freq)) +
   geom_bar(fill ="paleturquoise4", width=.7) +
-  coord_flip() + ggtitle(paste(column_name_print, "Frequency Distribution")) +
-  xlab("Dataset Frequencies") +
+  ggtitle(paste(column_name_print, "Frequency Distribution")) +
+  xlab("# Appearances in Data") +
   ylab("Number of VDSS Customers' IDs") +
   theme(panel.background=element_blank())
 ```
 
-
 ```{r frequencies, include=FALSE, cache=FALSE, eval=uniqueness_print}
-print(head(frequencies))
+kableExtra::kable_styling(knitr::kable(head(frequencies)), stripe_color = "grey!6")
 ```
 
 <!--COMPLETENESS-->
 ```{r completeness, include=FALSE, cache=FALSE, eval=completeness_print}
+#count missing rows
 missing <- cust_by_yr[is_blank(unique_id), .N]
-
-print(missing)
-
-#give the total count of responses
-print(total_record_count, row.names = FALSE)
-
 #calculate the percent of the variable which is complete
-percent_complete <- 
-  truncate(((total_record_count - missing)/total_record_count)*100, prec = 2)
+percent_complete <- truncate(((total_record_count - missing)/total_record_count)*100, prec = 2)
 
-print(percent_complete, row.names = FALSE)
+#table missing rows, total rows, percent complete
+kableExtra::kable_styling(knitr::kable(
+  tibble::tibble("Measure" = c("Missing", "Total Record #", "Percent Complete"),
+               "Value" = c(missing, total_record_count, percent_complete))
+  ))
 ```
 
 <!--VALUE VALIDITY-->
 ```{r validity, include=FALSE, cache=FALSE, eval=validity_print}
-invalid = cust_by_yr[is_blank(unique_id)|nchar(unique_id) != 7, .N] 
-  
-# get number of rows with invlaid values for active_status
-print(invalid)
-
-# give the total count of responses
-print(total_record_count, row.names = FALSE)
-
+# get invalid values (values longer/shorter than 7 characters)
+invalid = cust_by_yr[is_blank(unique_id)|nchar(unique_id) != 7, .N]
 # calculate the percent of the variable which is valid
 percent_valid = truncate(((total_record_count - invalid)/total_record_count)*100, prec = 2)
-print(percent_valid, row.names = FALSE)
 
+#table invalid rows, total rows, percent complete
+kableExtra::kable_styling(knitr::kable(
+  tibble::tibble("Measure" = c("Invalid", "Total Record #", "Percent Valid"),
+               "Value" = c(invalid, total_record_count, percent_valid)) ))
+
+#conditionally print details of invalid rows
 if (invalid > 0){
 # get record details
   invalid_details <-
-    cust_by_yr[is_blank(unique_id)|nchar(unique_id) != 7, c("unique_id", "calender_year_number", "year_of_birth")] 
- print(invalid_details) 
+    cust_by_yr[is_blank(unique_id)|nchar(unique_id) != 7, c("unique_id", "calender_year_number", "year_of_birth")]
+ knitr::kable(invalid_details) 
 }
-
 ```
 
 <!--RECORD CONSISTENCY I-->
@@ -315,140 +304,91 @@ if (record_inconsistent_2 > 0){
 
 <!--LONGITUDINAL CONSISTENCY I-->
 ```{r longitudinal_consistency_1, include=FALSE, cache=FALSE, eval=longitudinal_consistency_1_print}
+# Do any customers/unique IDs have more than 1 birth year?
 
-# Does Year of Birth ever change for a unique ID? 
-# longitudinal_inconsistent_1 <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id][N > 1, .(unique_id)]     # [N>,][,.N]
+# find & count unique IDs with more than 1 birth year
 longitudinal_inconsistent_1 <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id][N > 1, .(unique_id)]
-
 longitudinal_inconsistent_count_1 <- nrow(longitudinal_inconsistent_1)
 
+# calculate percentage of unique IDs with 1 birth year
 longitudinal_percent_consistent_1 <- 
   truncate(((total_person_count - longitudinal_inconsistent_count_1)/total_person_count)*100, prec = 2)
 
-print(longitudinal_percent_consistent_1)
-
-# convert dataframe column to a single-quoted, comma-delimited string for use in next SQL query
-unique_id_list <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id][N > 1, .(unique_id)]
+# table # Inconsistent IDs (ids with more than 1 birth year), # total persons, percentage consistent
+kableExtra::kable_styling(knitr::kable(
+  tibble::tibble(
+    "Measure" = c("# Inconsistent IDs", "Total Person Count", "Percent Consistent"),
+    "Value" = c(longitudinal_inconsistent_count_1, total_person_count, longitudinal_percent_consistent_1)) ))
 
 # get record details
-longitudinal_inconsistent_1_details <- cust_by_yr[unique_id %in% unique_id_list$unique_id, .(unique_id, year_of_birth)]
+longitudinal_inconsistent_1_details <- cust_by_yr[unique_id %in% longitudinal_inconsistent_1$unique_id, .(unique_id, year_of_birth)]
   
 # read in data
 year_plot_df <- 
   as.data.frame(
     table(longitudinal_inconsistent_1_details[[1]]))
 
-#levels(year_plot_df$Var1) <-  c("2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015")
-
-# plot inconsistencies by School Year
-school_year <- (ggplot(
+# plot inconsistencies by Birth Year
+birth_year <- (ggplot(
   year_plot_df, aes(Freq)) +
   geom_bar(fill ="honeydew3", width=.7) +
-  ggtitle("Customers with Inconsistent Item Entry by Frequency") +
-  scale_x_discrete("Frequency", drop = FALSE) +
+  ggtitle("Customers with Inconsistent Item Entry by Birth Years") +
+  xlab("# Birth Years") +
   ylab("# Unique IDs") + 
   theme(panel.background=element_blank()))
 
-# division <- (ggplot(
-#   year_plot_df, aes(Var2, Freq)) +
-#   geom_bar(stat="identity", fill ="honeydew3", width=.7) +
-#   ggtitle("Students with Inconsistent Item Entry by Birth Year") +
-#   scale_x_discrete("Birth Year", drop = FALSE) +
-#   ylab("Students") + 
-#   theme(panel.background=element_blank(), axis.text.x = element_text(angle = 90)))
-
-
-# read in data
-#division_plot_df <- 
-# as.data.frame(
-#    table(longitudinal_inconsistent_1_details[[3]], longitudinal_inconsistent_1_details[[2]]))
-
-# plot inconsistencies by School Division
-# division <- (ggplot(
-#   head(division_plot_df[order(-division_plot_df$Freq),], n=20), aes(Var1, Freq)) +
-#   geom_bar(stat="identity",  fill ="honeydew3", width=.7) +
-#   ggtitle("Students with Inconsistent Item Entry by School Division") +
-#   xlab("School Division") +
-#   ylab("Students") +
-#   theme(panel.background=element_blank()))
-   
-   #print(division)
-
-   print(longitudinal_percent_consistent_1)
-   print(school_year)
+print(birth_year)
    
 ```
 
 <!--LONGITUDINAL CONSISTENCY II-->
 ```{r longitudinal_consistency_2, include=FALSE, cache=FALSE, eval=longitudinal_consistency_2_print}
-snap <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS SNAP Customers by Year.csv", colClasses = "character")
+# Do any customers/unique IDs have more than 1 county FIPS code?
+
+# pull in SNAP for county FIPS code
+snap <- data.table::fread("~/git/vecf_counts/data/original/q4/DSS/DSS SNAP Customers by Year.csv", 
+                          colClasses = "character")
 colnames(snap) <- standard_col_names(colnames(snap))
 
-library(dplyr)
-library(magrittr)
+# set join keys in DSS customers and SNAP
+setkey(snap, unique_id)
+setkey(snap, study_group_id)
+setkey(snap, calendar_year_number)
+setkey(cust_by_yr, unique_id)
+setkey(cust_by_yr, study_group_id)
+setkey(cust_by_yr, calender_year_number)
 
-cust_by_yr_snap <- cust_by_yr %>% left_join(snap, by = c("unique_id", "study_group_id", "calender_year_number" = "calendar_year_number")) %>% as.data.table()
-#snap_cust_by_yr <- snap %>% left_join(cust_by_yr, by = c("unique_id", "study_group_id", "calendar_year_number" = "calender_year_number")) %>% as.data.table()
+# join the data
+cust_by_yr_snap <- cust_by_yr[snap, nomatch = 0, on = c("unique_id", "study_group_id", "calender_year_number" = "calendar_year_number")]
 
+# find and count unique IDs with more than one county FIPS code
 longitudinal_inconsistent_2 <- cust_by_yr_snap[, .N, by = .(unique_id, county_fips_code)][, .N, by = unique_id][N>1, .(unique_id)]
-#longitudinal_inconsistent_2_ <- snap_cust_by_yr[, .N, by = .(unique_id, county_fips_code)][, .N, by = unique_id][N>1, .(unique_id)]
+longitudinal_inconsistent_count_2 <- nrow(longitudinal_inconsistent_2)
 
-longitudinal_inconsistent_count_2 <- 
-  nrow(longitudinal_inconsistent_2)
-
+#calculate percent unique IDs with only one county FIPS code
 longitudinal_percent_consistent_2 <- 
   truncate(((total_person_count - longitudinal_inconsistent_count_2)/total_person_count)*100, prec = 2)
 
-print(longitudinal_percent_consistent_2)
-
-# convert dataframe column to a single-quoted, comma-delimited string for use in next SQL query
+kableExtra::kable_styling(knitr::kable(
+  tibble::tibble(
+    "Measure" = c("# Inconsistent IDs", "Total Person Count", "Percent Consistent"),
+    "Value" = c(longitudinal_inconsistent_count_2, total_person_count, longitudinal_percent_consistent_2)) ))
 
 # get record details
-longitudinal_inconsistent_2_details <- cust_by_yr_snap[cust_by_yr_snap$unique_id %in% longitudinal_inconsistent_2$unique_id, .(unique_id, county_fips_code, school_type_code)]
+longitudinal_inconsistent_2_details <- cust_by_yr_snap[cust_by_yr_snap$unique_id %in% longitudinal_inconsistent_2$unique_id, .(unique_id, county_fips_code, zip_code)]
 
 # read in data
 year_plot_df <- 
   as.data.frame(
     table(longitudinal_inconsistent_2_details[[3]], longitudinal_inconsistent_2_details[[2]]))
 
-# levels(year_plot_df$Var1) <-
-#   c("2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015")
-
-#plot inconsistencies by School Year
+#plot inconsistencies by FIPS code
 ggplot(
   year_plot_df, aes((as.numeric(Var2)/10)*10, Freq)) +
-  geom_bar(stat="identity") +
-  ggtitle("Customers with Inconsistent Item Entry by School Type") +
-  xlab("County FIPS Code")+ylab("Customers") +
-  theme(panel.background=element_blank(), axis.text.x = element_text(angle = 90)) #+ 
-  #scale_fill_manual(values=c("pink2", "lightskyblue3"))
-
-# # read in data
-# division_plot_df <- 
-#   as.data.frame(
-#     table(longitudinal_inconsistent_2_details[[4]], longitudinal_inconsistent_2_details[[2]]))
-# 
-# # plot inconsistencies by School Division
-ggplot(
-  year_plot_df[order(-year_plot_df$Freq),], aes(Var1, Freq)) +
-  geom_bar(stat="identity") +
-  ggtitle("Students with Inconsistent Item Entry by School Code (Top 20)") +
-  xlab("School Division") +
-  ylab("Students") +
-  theme(panel.background=element_blank(), axis.text.x = element_text(angle = 90)) #+
-  #scale_fill_manual(values=c("pink2", "lightskyblue3"))
-
-##### failed at joining with data table
-# X[Y, nomatch=0]
-# setkey(snap, unique_id)
-# setkey(cust_by_yr, unique_id)
-# unique_id_list <- cust_by_yr[, .N, by = .(unique_id, year_of_birth)][, .N, by = unique_id][N == 1, unique_id]
-# nondupecust <- cust_by_yr[cust_by_yr$unique_id %in% unique_id_list, ]
-# setkey(nondupecust, unique_id)
-# longitudinal_inconsistent_2 <- nondupecust[snap]
-```
-
-```{r}
+  geom_bar(stat="identity", fill = "paleturquoise4") +
+  ggtitle("Customers with Inconsistent Item Entry by County FIPS Code") +
+  xlab("County FIPS Code") + ylab("Customer Service Count") +
+  theme(panel.background=element_blank(), axis.text.x = element_text(angle = 90)) 
 
 ```
 
@@ -463,7 +403,7 @@ cat(paste("<hr size='30'>",
           "<h2>SUMMARY OF DATA ELEMENT</h2>",
           "<table><col width='300'><col width='600'>",
           "<tr><td valign='middle'>", column_description,
-          "<br><br>**Number of Unique Values:", nrow(column_valid_values), "**",
+          "<br><br>**Number of Unique Values:", nrow(unique(cust_by_yr$unique_id)), "**",
           "<div style='max-height:300px;max-width:290px;overflow-y:scroll;'>",
           htmlTable(column_valid_values, rnames=FALSE, css.cell = 'vertical-align: top;', align = 'lll'),
           "</div></td><td>"))
@@ -656,5 +596,7 @@ cat(paste("<h2>LONGITUDINAL CONSISTENCY II</h2>",
 ```{r, echo=FALSE, results="asis", eval=longitudinal_consistency_2_print}
 cat("<hr />")
 ```
+
+
 
 
