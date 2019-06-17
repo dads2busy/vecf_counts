@@ -1,4 +1,4 @@
-FUNCTIONS ----
+## LOAD LIBRARIES
 
 ```{r load_libraries, warning=FALSE, message=FALSE}
 library(data.table)
@@ -11,7 +11,7 @@ library(knitr)
 library(kableExtra)
 ```
 
-DSS RECORDS ----
+## DSS RECORDS
 Load DSS records and standardize column names
 
 ```{r dss_customers_load_rename, cache=TRUE, message=FALSE}
@@ -38,7 +38,7 @@ dss_customers_by_year_sub <-
 kable(dss_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 ```
 
-OCS RECORDS ----
+## OCS RECORDS
 Load OCS records and standardize column names
 
 ```{r ocs_services_load_rename, cache=TRUE, message=FALSE}
@@ -54,7 +54,7 @@ ocs_customers_by_year <- ocs_services_by_year[, .(ocs_service_entries = .N), .(u
 kable(ocs_customers_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 ```
 
-Join the DSS and OCS records
+## Join the DSS and OCS records
 
 ```{r join_dss_ocs}
 colnames(ocs_customers_by_year)[colnames(ocs_customers_by_year) == "program_year"] <- "calendar_year_number"
@@ -68,7 +68,7 @@ dss_ocs_cust_by_year[!is.na(ocs_service_entries), ocs_indicator := "Y"]
 dss_ocs_cust_by_year[is.na(ocs_service_entries), ocs_indicator := "N"]
 ```
 
-SNAP RECORDS ----
+## SNAP RECORDS
 Load SNAP records and standardize column names
 
 ```{r snap_customers_by_location_year_load_rename, cache=TRUE, message=FALSE}
@@ -76,7 +76,7 @@ snap_cust_by_loc_year <- fread(here("data/original/q4/DSS/DSS SNAP Customers by 
 colnames(snap_cust_by_loc_year) <- standard_col_names(colnames(snap_cust_by_loc_year))
 ```
 
-SNAP records are actually Customer by Year by "Location", so multiple records per customer
+### SNAP records are actually Customer by Year by "Location", so multiple records per customer
 if they received benefits in more than one fips code or zip code. As a single record is needed
 per customer, additional columns must be created to account for all possible locations.
 The number of columns added is based on the customer with the highest number of locations in a
@@ -93,7 +93,7 @@ snap_cust_by_year <- merge(fips, zips, by=c("unique_id", "study_group_id", "cale
 kable(snap_cust_by_year[!is.na(county_fips_code_5)][order(-county_fips_code_6)][1:25]) %>% kable_styling() %>% scroll_box(width = "100%")
 ```
 
-Join the DSS, OCS and SNAP records
+## Join the DSS, OCS and SNAP records
 
 ```{r join dss_ocs_snap}
 dss_ocs_snap_cust_by_year <- merge(dss_ocs_cust_by_year, snap_cust_by_year, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
@@ -113,7 +113,7 @@ ocs_snap_cnt_fips_by_year <- dss_ocs_snap_cust_by_year[, .N, c("county_fips_code
 kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 ```
 
-Get population by county by year for Virginia
+## Get population by county by year for Virginia
 
 ```{r virginia_population_by_county, message=FALSE, error=FALSE, results="hide"}
 va_pop_co_2013 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2013))
@@ -137,7 +137,7 @@ colnames(va_pop_co_2016)[colnames(va_pop_co_2016) == 'estimate'] <- 'estimate_20
 va_pop_co_2016 <- va_pop_co_2016[, .(GEOID, estimate_2016, year)]
 ```
 
-Combine Population Counts for Each Year
+## Combine Population Counts for Each Year
 
 ```{r join_ocs_snap_cnt_to_pop}
 colnames(ocs_snap_cnt_fips_by_year) <- c("GEOID", "year", "N")
@@ -149,7 +149,7 @@ ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2016, by
 ocs_snap_cnt_fips_by_year[, pop_est := gsub("NA", "", paste0(estimate_2013, estimate_2014, estimate_2015, estimate_2016))]
 ```
 
-Create Index "Idx" as the count of those with both SNAP and OCS in a county for a particular year
+## Create Index "Idx" as the count of those with both SNAP and OCS in a county for a particular year
 
 ```{r food_benefits_plus_behavioral_issues_per_capita_index_county}
 ocs_snap_cnt_fips_by_year <- ocs_snap_cnt_fips_by_year[, .(GEOID, year, snap_plus_ocs = N, pop_est, idx = N/as.numeric(pop_est))]
@@ -157,7 +157,7 @@ ocs_snap_cnt_fips_by_year <- ocs_snap_cnt_fips_by_year[, .(GEOID, year, snap_plu
 kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
 ```
 
-Create the Nutritional - Behavioral Index Map
+## Create the Nutritional - Behavioral Index Map
 Download the Geography
 
 ```{r get_virginia_county_geography, message=FALSE, error=FALSE, results="hide"}

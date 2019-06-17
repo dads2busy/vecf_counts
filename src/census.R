@@ -2,7 +2,7 @@
 library(tidycensus)
 
 # Define your Census API key and set it with census_api_key()
-api_key <- "a3ad0a45671574b1ee2650264216f403c96c0f20"
+api_key <- Sys.getenv("CENSUS_API_KEY")
 census_api_key(api_key, install = TRUE)
 
 # Check your API key

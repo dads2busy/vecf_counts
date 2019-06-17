@@ -8,12 +8,13 @@ FUNCTIONS ----
 ```{r load_libraries, warning=FALSE, message=FALSE}
 library(data.table)
 library(dataplumbr)
-library(tidycensus)
+#library(tidycensus)
 library(sf)
 library(ggplot2)
 library(here)
 library(knitr)
-library(kableExtra)
+library(dplyr)
+#library(kableExtra)
 ```
 
 DSS RECORDS ----
@@ -30,37 +31,57 @@ fix a misspelling for future joining
 colnames(dss_customers_by_year)[colnames(dss_customers_by_year) == "calender_year_number"] <- "calendar_year_number"
 ```
 
+subset to study age groups
+
+```{r subset_age_groups}
+dss_customers_by_year_und_6 <- dss_customers_by_year[age_group_code %in% c("05", "04", "03", "02", "01")]
+cat_chart <- dss_customers_by_year_und_6 %>% inspectdf::inspect_cat() %>% inspectdf::show_plot(high_cardinality = 1)
+cat_chart
+```
+
 find demographics that change when they shouldn't
 
 ```{r changing_dmgs}
 gender_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(gender_code), length(unique(gender_code)), unique_id][V1 > 1, .N]
-birth_year_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(year_of_birth), length(unique(year_of_birth)), unique_id][V1 > 1, .N]
-birth_month_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(month_of_birth), length(unique(month_of_birth)), unique_id][V1 > 1, .N]
-ethnicity_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(ethnicity_code) &
-         ethnicity_code != 0, length(unique(ethnicity_code)), unique_id][V1 > 1, .N]
-race_white_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(customer_race_is_white_indicator) &
-         customer_race_is_white_indicator %in% c("Y", "N"), length(unique(customer_race_is_white_indicator)), unique_id][V1 > 1, .N]
-race_black_mutli <-
-  dss_customers_by_year[age_group_code < 6 &
-         !is.na(customer_race_is_black_indicator) &
-         customer_race_is_black_indicator %in% c("Y", "N"), length(unique(customer_race_is_black_indicator)), unique_id][V1 > 1, .N]
+  dss_customers_by_year_und_6[!is.na(gender_code), .(cnt = length(unique(gender_code)), dmg = "multi gender"), unique_id]
 
-unique_n <- dss_customers_by_year[, .(unique_id), unique_id][, .N]
+# gender_mutli <-
+#   dss_customers_by_year_und_6 %>%
+#   group_by(unique_id) %>%
+#   filter(!is.na(gender_code)) %>%
+#   summarise(cnt = length(unique(year_of_birth)), dmg = "multi birth yr")
+
+birth_year_mutli <-
+  dss_customers_by_year_und_6[!is.na(year_of_birth), .(cnt = length(unique(year_of_birth)), dmg = "multi birth yr"), unique_id]
+
+birth_month_mutli <-
+  dss_customers_by_year_und_6[!is.na(month_of_birth), .(cnt = length(unique(month_of_birth)), dmg = "multi birth mo"), unique_id]
+
+ethnicity_mutli <-
+  dss_customers_by_year_und_6[!is.na(ethnicity_code) & ethnicity_code != 0, .(cnt = length(unique(ethnicity_code)), dmg = "multi ethnicity"), unique_id]
+
+race_white_mutli <-
+  dss_customers_by_year_und_6[!is.na(customer_race_is_white_indicator) &
+         customer_race_is_white_indicator %in% c("Y", "N"), .(cnt = length(unique(customer_race_is_white_indicator)), dmg = "multi race white"), unique_id]
+
+race_black_mutli <-
+  dss_customers_by_year_und_6[!is.na(customer_race_is_black_indicator) &
+         customer_race_is_black_indicator %in% c("Y", "N"), .(cnt = length(unique(customer_race_is_black_indicator)), dmg = "multi race black"), unique_id]
+
+dmg_multi <- data.table::rbindlist(list(gender_mutli, birth_year_mutli, birth_month_mutli, ethnicity_mutli, race_white_mutli, race_black_mutli))
+
+dmg_multi_wide <- dcast(dmg_multi, unique_id ~ dmg, value.var = "cnt", fun.aggregate = sum)
+
+dmg_multi_wide_c <- dmg_multi_wide[, lapply(.SD, as.character), by=unique_id]
+
+cat_multi <- dmg_multi_wide_c %>% inspectdf::inspect_cat() %>% inspectdf::show_plot(high_cardinality = 1)
 ```
 
 chart inconsistencies
 
 ```{r inconsistencies}
+unique_n <- dss_customers_by_year_und_6[, .(unique_id), unique_id][, .N]
+
 dmg_df <-
   data.frame(
     demographic = c(
@@ -72,12 +93,12 @@ dmg_df <-
       "race_white"
     ),
     multiples = c(
-      100*(gender_mutli / unique_n),
-      100*(birth_year_mutli / unique_n),
-      100*(birth_month_mutli / unique_n),
-      100*(ethnicity_mutli / unique_n),
-      100*(race_black_mutli / unique_n),
-      100*(race_white_mutli / unique_n)
+      100*(gender_mutli[cnt > 1, .N] / unique_n),
+      100*(birth_year_mutli[cnt > 1, .N] / unique_n),
+      100*(birth_month_mutli[cnt > 1, .N] / unique_n),
+      100*(ethnicity_mutli[cnt > 1, .N] / unique_n),
+      100*(race_black_mutli[cnt > 1, .N] / unique_n),
+      100*(race_white_mutli[cnt > 1, .N] / unique_n)
     )
   )
 
