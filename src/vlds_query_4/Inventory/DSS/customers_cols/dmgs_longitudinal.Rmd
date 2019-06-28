@@ -35,8 +35,10 @@ subset to study age groups
 
 ```{r subset_age_groups}
 dss_customers_by_year_und_6 <- dss_customers_by_year[age_group_code %in% c("05", "04", "03", "02", "01")]
-cat_chart <- dss_customers_by_year_und_6 %>% inspectdf::inspect_cat() %>% inspectdf::show_plot(high_cardinality = 1)
-cat_chart
+cat_chart <- 
+  dss_customers_by_year_und_6 %>% 
+  inspectdf::inspect_cat() %>% 
+  inspectdf::show_plot(high_cardinality = 1)
 ```
 
 find demographics that change when they shouldn't

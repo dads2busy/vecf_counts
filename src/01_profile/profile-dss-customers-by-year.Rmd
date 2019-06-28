@@ -1,0 +1,197 @@
+---
+title: "Profile Dataset: DSS Customers By Year"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(inspectdf)
+library(dplyr)
+library(data.table)
+library(here)
+library(maditr)
+library(dataplumbr)
+library(ggplot2)
+library(knitr)
+```
+
+```{r, include=FALSE}
+dss_customers_by_year_unprepared <- fread(here("data/original/q5/DSS/DSS Customers By Year.csv"), colClasses = "character")
+dt <- fread(here("data/working/DSS/dss_customers_by_year.csv"), colClasses = "character")
+```
+## Dataset Preparation
+Provided datasets are often vastly different from each other in terms of both schema and structure. To prepare for data profiling, datsets fields are checked for spelling errors and converted to a standardized format. If the dataset does not provide records at the level of aggregation required (e.g. each row is unique for a person and year) then the dataset is restructured.
+
+#### Task: Preparation of Field/Column Names
+Field/Column names standardized.
+```{r dataset-fields, echo=FALSE}
+fields_original <- colnames(dss_customers_by_year_unprepared)
+fields_prepared <- colnames(dt)
+dataset_fields <- data.table(fields_original, fields_prepared)
+kable(dataset_fields, "html")
+```
+
+#### Task: Restructuring of Datset to Required Level of Aggregation
+No restructuring was required for this dataset.
+
+## Uniqueness
+The concept of data uniqueness can be generalized as the number of unique valid values that have been entered in a record field, or as a combination of record field values within a dataset. Uniqueness is not generally discussed in terms of data quality, but for the purposes of answering research questions, the variety and richness of the data is of paramount importance. Most notably, if a record field has very little value uniqueness (e.g. entries in the field ‘State’ for an analysis of housing within a county, which of course would be within a single state), then its utility would be quite low and can be conceptualized as having low quality in terms of the research question at hand.
+
+### Test: Numerical Frequencies
+There were no numerical items in this dataset
+
+### Test: Categorical Frequencies
+```{r uniqueness, echo=FALSE}
+cat_chart <- 
+  dt %>% 
+  dt_select(-1) %>% 
+  inspect_cat() %>% 
+  show_plot()
+```
+
+## Completeness
+The concept of data completeness can be generalized as the proportion of data provided versus the proportion of data required. Data that is missing may additionally be categorized as record fields not containing data, records not containing necessary fields, or datasets not containing the requisite records. The most common conceptualization of completeness is the first, record field not containing data. This conceptualization of data completeness can be thought of as the proportion of the data that has values to the proportion of data that ’should’ have values. That is, a set of data is complete with respect to a given purpose if the set contains all the relevant data for that purpose.
+
+#### Test: Record Completeness (The Number of Records with Empty Values in a Field/Column)
+```{r record-completeness, echo=FALSE}
+# Number of cell values missing per row
+row_empties <- rowSums(var.is_blank(dt))
+
+# Create better visualization
+row_empties_dt <- as.data.table(row_empties)
+records_with_empties <- data.table(rows_with_empties = row_empties_dt[row_empties > 0, .N])
+kable(records_with_empties, "html")
+```
+
+#### Test: Item Completeness (The Number Cells Missing Values in each Field/Column)
+```{r item-completeness, echo=FALSE}
+# Number of cell values missing per column
+col_empties <- colSums(var.is_blank(dt))
+
+# Create better visualization
+
+col_empties_dt <- as.data.table(col_empties, keep.rownames = T)
+#dtt <- setDT(df, keep.rownames=TRUE)
+colnames(col_empties_dt) <- c("item", "empties")
+item_empties <- col_empties_dt[order(-empties)]
+kable(item_empties, "html")
+```
+
+## Valid Values
+The concept of value validity can be conceptualized as the percentage of elements whose attributes possess expected values. The actualization of this concept generally comes in the form of straight-forward domain constraint rules.
+
+#### Test: Count and Percetage of Invalid Values in each Field/Column
+```{r valid-values, echo=FALSE}
+#. gender ----
+invalid_gend <- c("1", "2")
+gender_invalid <- dt[gender_code %in% invalid_gend, .N]
+
+# ethnicity
+invalid_eth <- c("0", "3", "90", "93")
+invalid_ethnicity <- data.table(invalid_ethnicity = dt[ethnicity_code %in% invalid_eth, .N])
+
+# race
+invalid_race_amer_ind <- data.table(invalid_race_amer_ind = dt[!cust_race_is_amer_indian_alaska_native_ind %in% c("Y", "N"), .N])
+invalid_race_asian <- data.table(invalid_race_asian = dt[!customer_race_is_asisan_indicator %in% c("Y", "N"), .N])
+invalid_race_black <- data.table(invalid_race_black = dt[!customer_race_is_black_indicator %in% c("Y", "N"), .N])
+invalid_race_pacific <- data.table(invalid_race_pacific = dt[!cust_race_is_hawaiian_pacific_islander_ind %in% c("Y", "N"), .N])
+invalid_race_other <- data.table(invalid_race_other = dt[!customer_race_is_other_indicator %in% c("Y", "N"), .N])
+invalid_race_white <- data.table(invalid_race_white = dt[!customer_race_is_white_indicator %in% c("Y", "N"), .N])
+
+# year
+invalid_year <- data.table(invalid_year = dt[!as.integer(calendar_year_number) %in% 2013:2016, .N])
+
+# services
+invalid_foster <- data.table(invalid_foster = dt[!foster_care_case_indicator %in% c("Y", "N"), .N])
+invalid_snap <- data.table(invalid_snap = dt[!snap_case_indicator %in% c("Y", "N"), .N])
+invalid_tanf <- data.table(invalid_tanf = dt[!tanf_case_indicator %in% c("Y", "N"), .N])
+
+
+vv_multi <- data.table(invalid_ethnicity, 
+                       invalid_race_amer_ind, 
+                       invalid_race_asian, 
+                       invalid_race_black, 
+                       invalid_race_pacific, 
+                       invalid_race_other, 
+                       invalid_race_white,
+                       invalid_foster,
+                       invalid_snap,
+                       invalid_tanf)
+vv_multi_t <- as.data.table(t(vv_multi), keep.rownames = T)
+
+colnames(vv_multi_t) <- c("item", "count")
+vv_multi_t[, pct := round(100*(count/nrow(dt)), 1)]
+
+g <- ggplot(vv_multi_t, aes(x=item, y=count)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Count") +
+  labs(title = "Count of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=count), position=position_dodge(width=0.9), vjust=-0.2)
+g
+
+gp <- ggplot(vv_multi_t, aes(x=item, y=pct)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Percent") +
+  labs(title = "Percent of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=pct), position=position_dodge(width=0.9), vjust=-0.2)
+gp
+```
+
+
+## Longitudinal Consistency (Unexpected Changes in Demographics)
+Longitudinal Consistency refers to a check for inconsistency in the data when checked over time (longitudinally), to see if the same value is recorded for every new record when it should be (i.e. birthdate and other demographics). Causes of longitudinal inconsistency are varied, but a common source of inconsistency comes from situations where locally derived information is provided with no associated master list or file. An exhaustive ‘master list’ of individuals receiving a public service are, in fact, quite rare. Many times, demographics are recorded in multiple records about the same individual, sometimes in the same time period. In these cases, truth must be derived from the aggregation of multiple observations.
+
+#### Test: Count and Percetage of Individuals with Multiple Values per Demographic Item
+```{r longitudinal-consistency, echo=FALSE}
+gender_multi <-
+  data.table(gender_multi = dt[!is.na(gender_code), .(cnt = length(unique(gender_code)), dmg = "multi gender"), unique_id][cnt > 1, .N])
+
+birth_year_multi <-
+  data.table(birth_year_multi = dt[!is.na(year_of_birth), .(cnt = length(unique(year_of_birth)), dmg = "multi birth yr"), unique_id][cnt > 1, .N])
+
+birth_month_multi <-
+  data.table(birth_month_multi = dt[!is.na(month_of_birth), .(cnt = length(unique(month_of_birth)), dmg = "multi birth mo"), unique_id][cnt > 1, .N])
+
+ethnicity_multi <-
+  data.table(ethnicity_multi = dt[!is.na(ethnicity_code) & ethnicity_code != 0, .(cnt = length(unique(ethnicity_code)), dmg = "multi ethnicity"), unique_id][cnt > 1, .N])
+
+race_white_multi <-
+  data.table(race_white_multi = dt[!is.na(customer_race_is_white_indicator) &
+       customer_race_is_white_indicator %in% c("Y", "N"), .(cnt = length(unique(customer_race_is_white_indicator)), dmg = "multi race white"), unique_id
+     ][cnt > 1, .N])
+
+race_black_multi <-
+  data.table(race_black_multi = dt[!is.na(customer_race_is_black_indicator) &
+       customer_race_is_black_indicator %in% c("Y", "N"), .(cnt = length(unique(customer_race_is_black_indicator)), dmg = "multi race black"), unique_id
+     ][cnt > 1, .N])
+
+dmg_multi <- data.table(gender_multi, birth_year_multi, birth_month_multi, ethnicity_multi, race_white_multi, race_black_multi)
+dmg_multi_t <- as.data.table(t(dmg_multi), keep.rownames = T)
+colnames(dmg_multi_t) <- c("item", "count")
+dmg_multi_t[, pct := round(100*(count/nrow(dt)), 1)]
+
+g <- ggplot(dmg_multi_t, aes(x=item, y=count)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Demographic Item") + ylab("Count") +
+  labs(title = "Count of Individuals with Multiple Values per Demographic Item",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g
+
+gp <- ggplot(dmg_multi_t, aes(x=item, y=pct)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Demographic Item") + ylab("Percent") +
+  labs(title = "Percent of Individuals with Multiple Values per Demographic Item",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+gp
+```
+
+

@@ -1,0 +1,177 @@
+---
+title: "Profile Dataset: DSS SNAP Customers By Year"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(inspectdf)
+library(dplyr)
+library(data.table)
+library(here)
+library(maditr)
+library(dataplumbr)
+library(ggplot2)
+library(knitr)
+library(zipcode)
+library(maps)
+library(kableExtra)
+```
+
+```{r, include=FALSE}
+dt_unprepared <- fread(here("data/original/q5/DSS/DSS SNAP Customers by Year.csv"), colClasses = "character")
+dt <- fread(here("data/working/DSS/dss_snap_customers_by_year.csv"), colClasses = "character")
+```
+## Dataset Preparation
+Provided datasets are often vastly different from each other in terms of both schema and structure. To prepare for data profiling, datsets fields are checked for spelling errors and converted to a standardized format. If the dataset does not provide records at the level of aggregation required (e.g. each row is unique for a person and year) then the dataset is restructured.
+
+#### Task: Preparation of Field/Column Names
+Field/Column names standardized.
+```{r dataset-fields, echo=FALSE}
+
+```
+
+#### Task: Restructuring of Datset to Required Level of Aggregation
+Significant restructuring required for use for this case. SNAP Customer Records By Year are actually <b>Customer Records by Year AND by "Location"</b>, so multiple records per customer occur if a customer received benefits in more than one fips code or zip code in a calendar year. As a single record is needed per customer per year for linkage purposes, additional columns must be created to account for all possible locations. The number of columns added is based on the customer with the highest number of locations in a single year. The code automatically determines the number. The result of the restructing can be seen in the addition of multiple county fips and zipcode columns.
+```{r dataset-restructuring, echo=FALSE}
+fields_original <- colnames(dt_unprepared)
+fields_prepared <- colnames(dt)
+n <- max(length(fields_original), length(fields_prepared))
+dataset_fields <- data.table(fields_original = fields_original[1:n], fields_prepared = fields_prepared[1:n])
+kable(dataset_fields, "html")
+```
+
+```{r, echo=FALSE}
+kable(dt[!var.is_blank(county_fips_code_3)][1:5], "html") %>% kable_styling(font_size = 7)
+```
+
+
+## Uniqueness
+The concept of data uniqueness can be generalized as the number of unique valid values that have been entered in a record field, or as a combination of record field values within a dataset. Uniqueness is not generally discussed in terms of data quality, but for the purposes of answering research questions, the variety and richness of the data is of paramount importance. Most notably, if a record field has very little value uniqueness (e.g. entries in the field ‘State’ for an analysis of housing within a county, which of course would be within a single state), then its utility would be quite low and can be conceptualized as having low quality in terms of the research question at hand.
+
+### Test: Numerical Frequencies
+There were no numerical items in this dataset
+
+### Test: Categorical Frequencies
+```{r uniqueness, echo=FALSE}
+dt %>% 
+  dt_select(-1) %>% 
+  inspect_cat() %>%
+  show_plot(high_cardinality = 1)
+```
+
+
+## Completeness
+The concept of data completeness can be generalized as the proportion of data provided versus the proportion of data required. Data that is missing may additionally be categorized as record fields not containing data, records not containing necessary fields, or datasets not containing the requisite records. The most common conceptualization of completeness is the first, record field not containing data. This conceptualization of data completeness can be thought of as the proportion of the data that has values to the proportion of data that ’should’ have values. That is, a set of data is complete with respect to a given purpose if the set contains all the relevant data for that purpose.
+
+#### Test: Record Completeness (The Number of Records with Empty Values in a Field/Column)
+```{r record-completeness, echo=FALSE}
+# Number of cell values missing per row
+row_empties <- rowSums(var.is_blank(dt))
+
+# Create better visualization
+row_empties_dt <- as.data.table(row_empties)
+records_with_empties <- data.table(rows_with_empties = row_empties_dt[row_empties > 0, .N])
+kable(records_with_empties, "html")
+```
+
+#### Test: Item Completeness (The Number Cells Missing Values in each Field/Column)
+```{r item-completeness, echo=FALSE}
+# Number of cell values missing per column
+col_empties <- colSums(var.is_blank(dt))
+
+# Create better visualization
+
+col_empties_dt <- as.data.table(col_empties, keep.rownames = T)
+#dtt <- setDT(df, keep.rownames=TRUE)
+colnames(col_empties_dt) <- c("item", "empties")
+item_empties <- col_empties_dt[order(-empties)]
+kable(item_empties, "html")
+```
+
+## Valid Values
+The concept of value validity can be conceptualized as the percentage of elements whose attributes possess expected values. The actualization of this concept generally comes in the form of straight-forward domain constraint rules.
+
+#### Test: Count and Percetage of Invalid Values in each Field/Column
+```{r valid-values-zipcode, echo=FALSE}
+#. zip code ----
+data("zipcode")
+zipcodes_va <- zipcode[zipcode$state=="VA",]
+
+#zips <- c(dt$zip_code_1, dt$zip_code_2)
+
+invalid_zipcode_dt <- dt[!var.is_blank(zip_code_1)][!zip_code_1 %in% zipcodes_va$zip, .(zip_code_1)]
+
+invalid_zipcode <- data.table(invalid_zipcode = nrow(invalid_zipcode_dt))
+```
+
+
+```{r valid-values-county-fips, echo=FALSE}
+# county fips
+con <- DBI::dbConnect(drv = RPostgreSQL::PostgreSQL(),
+                        dbname = "gis",
+                        host = "postgis_1",
+                        port = "5432",
+                        user = Sys.getenv("db_userid"),
+                        password = Sys.getenv("db_pwd"))
+
+fips_va <- DBI::dbGetQuery(con, "SELECT \"COUNTYFP\" FROM census_cb.cb_2016_us_county_500k where \"STATEFP\" = '51'")
+
+invalid_fips_dt <- dt[!var.is_blank(county_fips_code_1)][!county_fips_code_1 %in% fips_va$COUNTYFP,]
+invalid_fips <- data.table(invalid_fips = nrow(invalid_fips_dt))
+```
+
+```{r valid-values-year, echo=FALSE}
+# year
+invalid_year_dt <- dt[!var.is_blank(calendar_year_number)][!calendar_year_number %in% seq(2007, 2017, 1)]
+invalid_year <-  data.table(invalid_year = nrow(invalid_year_dt))
+```
+
+```{r, echo=FALSE}
+
+vv_multi <- data.table(invalid_zipcode, 
+                       invalid_fips, 
+                       invalid_year)
+
+vv_multi_t <- as.data.table(t(vv_multi), keep.rownames = T)
+
+colnames(vv_multi_t) <- c("item", "count")
+vv_multi_t[, pct := round(100*(count/nrow(dt)), 1)]
+
+g <- ggplot(vv_multi_t, aes(x=item, y=count)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Count") +
+  labs(title = "Count of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=count), position=position_dodge(width=0.9), vjust=-0.2)
+g
+
+gp <- ggplot(vv_multi_t, aes(x=item, y=pct)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Percent") +
+  labs(title = "Percent of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=pct), position=position_dodge(width=0.9), vjust=-0.2)
+gp
+```
+
+#### Investigate Zipcode Further
+```{r investigate-zipcode, echo=FALSE}
+kable(invalid_zipcode_dt[, .(zipcode = zip_code_1)], "html", caption = "Invalid Zip Codes")
+```
+
+### Investigate County FIPS Further
+```{r investigate-county-fips, echo=FALSE}
+kable(invalid_fips_dt[, .(county_fips_code = county_fips_code_1)], "html", caption = "Invalid County FIPS Codes")
+```
+
+
+## Longitudinal Consistency (Unexpected Changes in Demographics)
+There are no longitudinal tests for this dataset.
+
+

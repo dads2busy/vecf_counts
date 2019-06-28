@@ -1,0 +1,47 @@
+---
+title: "Ingest DOE Student Record Part B Funding"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## LOAD LIBRARIES AND FUNCTIONS
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(data.table)
+library(dataplumbr)
+library(here)
+library(inspectdf)
+library(maditr)
+```
+
+## DSS Student Record Customers by Year
+### Load data file
+```{r cache=TRUE, message=FALSE}
+doe_student_records <- fread(here("data/original/q5/DOE/Student Records.csv"), colClasses = "character")
+```
+
+### Standardize column names
+```{r}
+colnames(doe_student_records) <- name.standard_col_names(colnames(doe_student_records))
+```
+
+### Check if more than one record per unique_id and calendar_year
+```{r}
+multiples <- nrow(doe_student_records[, .N,.(unique_id, school_year)][N > 1])
+multiples
+```
+
+### Get Part B Funded By Year
+```{r}
+part_b <- doe_student_records[prek_funding_code == "5", .(pk_code = unique(prek_funding_code)),.(unique_id, school_year)]
+
+# verify only one code per id per year
+nrow(part_b[, .N, .(unique_id, school_year)][N > 1])
+```
+
+### write to csv
+```{r}
+fwrite(part_b, here("data/working/DOE/doe_part_b_by_year.csv"))
+```

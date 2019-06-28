@@ -1,0 +1,267 @@
+## LOAD LIBRARIES
+
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(data.table)
+library(dataplumbr)
+library(tidycensus)
+library(ggplot2)
+library(here)
+library(knitr)
+library(kableExtra)
+library(sf)
+library(sp)
+```
+
+## DSS RECORDS
+Load DSS records
+
+```{r dss_customers_load, cache=TRUE, message=FALSE}
+dss_customers_by_year <- fread(here("data/working/DSS/dss_customers_by_year.csv"), colClasses = "character")
+```
+
+## OCS RECORDS
+Load OCS records
+
+```{r ocs_services_load, cache=TRUE, message=FALSE}
+ocs_services_by_year <- fread(here("data/working/OCS/ocs_services_by_year.csv"), colClasses = "character")
+ocs_services_by_year[, ocs_indicator := "Y"]
+```
+
+## SNAP RECORDS
+Load SNAP records 
+
+```{r snap_customers_by_location_year_load, cache=TRUE, message=FALSE}
+doe_student_dmgs_by_year <- fread(here("data/working/DOE/doe_student_records_by_year_dmgs_prek.csv"), colClasses = "character") 
+```
+
+## DOE RECORDS
+Load DOE records 
+
+```{r doe_dmgs, cache=TRUE, message=FALSE}
+dss_snap_customers_by_year <- fread(here("data/working/DSS/dss_snap_customers_by_year.csv"), colClasses = "character")
+```
+
+## TANF RECORDS
+Load TANF records 
+
+```{r doe_dmgs, cache=TRUE, message=FALSE}
+dss_tanf_customers_by_year <- fread(here("data/working/DSS/dss_tanf_customers_by_year.csv"), colClasses = "character")
+```
+
+## FOSTER RECORDS
+Load FOSTER records 
+
+```{r doe_dmgs, cache=TRUE, message=FALSE}
+dss_foster_customers_by_year <- fread(here("data/working/DSS/dss_foster_customers_by_year.csv"), colClasses = "character")
+```
+
+## Join the DSS and OCS records
+
+```{r join_dss_ocs}
+dss_ocs_cust_by_year <- merge(dss_customers_by_year, ocs_services_by_year, by.x = c("unique_id", "calendar_year_number"), by.y = c("unique_id", "program_year"), all.x = TRUE)
+```
+
+update service indicator variable for later use
+
+```{r update_ocs_service_indicator}
+dss_ocs_cust_by_year[is.na(ocs_indicator), ocs_indicator := "N"]
+```
+
+## Join the DSS, OCS and SNAP records
+
+```{r join dss_ocs_snap}
+dss_snap_customers_by_year_sub <- dss_snap_customers_by_year[, .(unique_id, calendar_year_number, snap_county_fips_code = county_fips_code_1)]
+dss_ocs_snap_cust_by_year <- merge(dss_ocs_cust_by_year, dss_snap_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+```
+
+## Join the DSS, OCS, SNAP and DOE records
+
+```{r join dss_ocs_snap_doe}
+doe_student_dmgs_by_year_sub <- doe_student_dmgs_by_year[prek_funding_code == "5"]
+dss_ocs_snap_doe_cust_by_year <- merge(dss_ocs_snap_cust_by_year, doe_student_dmgs_by_year_sub, by.x = c("unique_id", "calendar_year_number"), by.y = c("unique_id", "school_year"), all.x = TRUE)
+```
+
+## Join the DSS, OCS, SNAP and TANF records
+
+```{r join dss_ocs_snap}
+dss_tanf_customers_by_year_sub <- dss_tanf_customers_by_year[, .(unique_id, calendar_year_number, tanf_county_fips_code = county_fips_code_1)]
+dss_ocs_snap_doe_tanf_cust_by_year <- merge(dss_ocs_snap_doe_cust_by_year, dss_tanf_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+```
+
+## Join the DSS, OCS, SNAP, TANF and FOSTER records
+
+```{r join dss_ocs_snap}
+dss_foster_customers_by_year_sub <- dss_foster_customers_by_year[, .(unique_id, calendar_year_number, foster_county_fips_code = county_fips_code)]
+dss_ocs_snap_doe_tanf_fost_cust_by_year <- merge(dss_ocs_snap_doe_tanf_cust_by_year, dss_foster_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+```
+
+## Remove columns not currently needed
+
+```{r}
+dss_ocs_snap_doe_tanf_fost_cust_by_year[, age_class_code := NULL]
+dss_ocs_snap_doe_tanf_fost_cust_by_year[, age_type_code := NULL]
+```
+
+## Table of IDs vs Services
+```{r}
+ids_services <- dss_ocs_snap_doe_tanf_fost_cust_by_year[, .(unique_id,
+                                                            year = calendar_year_number,
+                                                            tanf = tanf_case_indicator,
+                                                            fips_tanf = tanf_county_fips_code,
+                                                            snap = snap_case_indicator,
+                                                            fips_snap = snap_county_fips_code,
+                                                            foster = foster_care_case_indicator,
+                                                            fips_foster = foster_county_fips_code,
+                                                            ocs = ocs_indicator,
+                                                            part_b = prek_funding_code,
+                                                            wht = customer_race_is_white_indicator,
+                                                            blk = customer_race_is_black_indicator,
+                                                            asn = customer_race_is_asisan_indicator,
+                                                            ind = cust_race_is_amer_indian_alaska_native_ind,
+                                                            isl = cust_race_is_hawaiian_pacific_islander_ind,
+                                                            oth = customer_race_is_other_indicator,
+                                                            ethn = ethnicity_code
+                                                            )]
+ids_services[is.na(part_b), part_b := "N"]
+ids_services[!is.na(part_b), part_b := "Y"]
+```
+
+### Apply Deduplication algorithm to get One Record per ID
+```{r}
+set.dedup_choice <- function(df) {
+    dt <- data.table::setDT(df)
+    for (j in colnames(dt)) {
+        data.table::set(dt, j = j, value = dt[get(j) != "", .N, j][order(-N)][, ..j][1])
+    }
+    dt[1]
+}
+
+set.dedup_choice_by_key <- function(df, key = "uid") {
+    if (exists("out_dt") == TRUE) rm(out_dt, envir = globalenv())
+
+    dt <- data.table::setDT(df)
+    unique_keys <- unique(dt[, get(key)])
+    key_cnt <- length(unique_keys)
+    pb <- progress::progress_bar$new(format = "[:bar] :current/:total :percent eta: :eta", total = key_cnt)
+
+    for (k in unique_keys) {
+        pb$tick()
+        g <- dt[get(key)==k]
+        r <- set.dedup_choice(g)
+        if (exists("out_dt") == FALSE) out_dt <- r else out_dt <- rbindlist(list(out_dt, r))
+    }
+
+    out_dt
+}
+
+ids_services_dedup <- set.dedup_choice_by_key(ids_services, "unique_id")
+
+# verify only one code per id per year
+nrow(ids_services_dedup[, .N, .(unique_id)][N > 1])
+
+fwrite(ids_services_dedup, here("data/working/ids_services_dedup.csv"))
+```
+
+```{r}
+ids_services_dedup <- fread(here("data/working/ids_services_dedup.csv"))
+kable(ids_services_dedup[1:25], caption = "All Services, Locations, Races, and Ethnicity per Child") %>%
+  kable_styling(bootstrap_options = "striped", font_size = 9, full_width = F)
+```
+
+## Receiving SNAP (source DSS) and Part-B (source DOE) Benefits by Year by County
+
+```{r}
+snap_partb_by_year_fips <- ids_services[snap=="Y" && part_b=="Y", .(cnt = length(unique(unique_id))), .(year, fips_snap)][order(fips_snap, year, -cnt)]
+snap_partb_by_year_fips[, GEOID := paste0("51", fips_snap)]
+```
+
+```{r get_virginia_county_geography, message=FALSE, error=FALSE, results="hide"}
+va_geo <- tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2016, geometry = TRUE)
+```
+
+```{r}
+snap_partb_by_year_fips_geo <- merge(va_geo, snap_partb_by_year_fips, by = "GEOID")
+```
+
+```{r}
+mydata <- snap_partb_by_year_fips_geo[snap_partb_by_year_fips_geo$year=="2015",]
+ggplot() +
+  geom_sf(data = mydata, aes(fill = cnt)) +
+  labs(title = "Count of Individuals Receiving SNAP and Part B Benefits 2015",
+       subtitle = "Datasets: DSS Customers By Year, DOE Student Records")
+```
+
+
+
+## Get population by county by year for Virginia
+
+```{r virginia_population_by_county, message=FALSE, error=FALSE, results="hide"}
+va_pop_co_2013 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2013))
+va_pop_co_2013[, year := "2013"]
+colnames(va_pop_co_2013)[colnames(va_pop_co_2013) == 'estimate'] <- 'estimate_2013'
+va_pop_co_2013 <- va_pop_co_2013[, .(GEOID, estimate_2013, year)]
+
+va_pop_co_2014 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2014))
+va_pop_co_2014[, year := "2014"]
+colnames(va_pop_co_2014)[colnames(va_pop_co_2014) == 'estimate'] <- 'estimate_2014'
+va_pop_co_2014 <- va_pop_co_2014[, .(GEOID, estimate_2014, year)]
+
+va_pop_co_2015 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2015))
+va_pop_co_2015[, year := "2015"]
+colnames(va_pop_co_2015)[colnames(va_pop_co_2015) == 'estimate'] <- 'estimate_2015'
+va_pop_co_2015 <- va_pop_co_2015[, .(GEOID, estimate_2015, year)]
+
+va_pop_co_2016 <- data.table::setDT(tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2016))
+va_pop_co_2016[, year := "2016"]
+colnames(va_pop_co_2016)[colnames(va_pop_co_2016) == 'estimate'] <- 'estimate_2016'
+va_pop_co_2016 <- va_pop_co_2016[, .(GEOID, estimate_2016, year)]
+```
+
+## Combine Population Counts for Each Year
+
+```{r join_ocs_snap_cnt_to_pop}
+colnames(ocs_snap_cnt_fips_by_year) <- c("GEOID", "year", "N")
+ocs_snap_cnt_fips_by_year[, GEOID := paste0("51", GEOID)]
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2013, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2014, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2015, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year <- merge(ocs_snap_cnt_fips_by_year, va_pop_co_2016, by = c("GEOID", "year"), all.x = T)
+ocs_snap_cnt_fips_by_year[, pop_est := gsub("NA", "", paste0(estimate_2013, estimate_2014, estimate_2015, estimate_2016))]
+```
+
+## Create Index "Idx" as the count of those with both SNAP and OCS in a county for a particular year
+
+```{r food_benefits_plus_behavioral_issues_per_capita_index_county}
+ocs_snap_cnt_fips_by_year <- ocs_snap_cnt_fips_by_year[, .(GEOID, year, snap_plus_ocs = N, pop_est, idx = N/as.numeric(pop_est))]
+# print table
+kable(ocs_snap_cnt_fips_by_year[1:4]) %>% kable_styling() %>% scroll_box(width = "910px")
+```
+
+## Create the Nutritional - Behavioral Index Map
+Download the Geography
+
+```{r get_virginia_county_geography, message=FALSE, error=FALSE, results="hide"}
+va_geo <- tidycensus::get_acs(geography = "county", variables = "B01001_001", state = "VA", year = 2016, geometry = TRUE)
+```
+
+Chose year to map and create a standardized index from 0 to 1
+
+```{r subset_chosen_year_index_data_and_standardize, echo=FALSE, message=FALSE, error=FALSE}
+idx_2013 <- data.table::setDF(ocs_snap_cnt_fips_by_year[year=="2013"])
+min_idx_2013 <- min(idx_2013$idx)
+max_idx_2013 <- max(idx_2013$idx)
+idx_2013$idx_z <- (idx_2013$idx - min_idx_2013)/(max_idx_2013-min_idx_2013)
+```
+
+Combine the data and geography and create the map
+
+```{r merge_and_map, out.width="100%"}
+va_geo_idx_2013 <- merge(va_geo, idx_2013, by = "GEOID")
+
+ggplot(data = va_geo_idx_2013) + 
+  geom_sf(aes(fill = idx_z)) + 
+  ggtitle("Nutrition plus Behavioral Assistance", subtitle = "(scaled per capita per county)") +
+  theme(panel.grid.major = element_line(color = gray(0.5), linetype = "dashed", 
+                                        size = 0.5), panel.background = element_rect(fill = "aliceblue"))
+```
+

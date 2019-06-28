@@ -1,0 +1,38 @@
+---
+title: "Ingest DSS"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## LOAD LIBRARIES AND FUNCTIONS
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(data.table)
+library(dataplumbr)
+library(here)
+library(inspectdf)
+library(maditr)
+```
+
+## DSS Customers By Year
+### Load data file
+```{r cache=TRUE, message=FALSE}
+dss_customers_by_year <- fread(here("data/original/q5/DSS/DSS Customers By Year.csv"), colClasses = "character")
+```
+
+### Standardize column names
+```{r}
+colnames(dss_customers_by_year) <- name.standard_col_names(colnames(dss_customers_by_year))
+```
+
+### fix a misspelling for future joining
+```{r}
+setnames(dss_customers_by_year, "calender_year_number", "calendar_year_number")
+```
+
+### write to csv
+```{r}
+fwrite(dss_customers_by_year, here("data/working/DSS/dss_customers_by_year.csv"), quote = TRUE)
+```

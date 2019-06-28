@@ -1,0 +1,45 @@
+---
+title: "Ingest OCS Services by Year"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## LOAD LIBRARIES AND FUNCTIONS
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(data.table)
+library(dataplumbr)
+library(here)
+library(inspectdf)
+library(maditr)
+```
+
+## OCS Services by Year
+### Load data file
+```{r cache=TRUE, message=FALSE}
+ocs_services <- fread(here("data/original/q5/OCS/OCS Services By Year.csv"), colClasses = "character")
+```
+
+### Standardize column names
+```{r}
+colnames(ocs_services) <- name.standard_col_names(colnames(ocs_services))
+```
+
+### Check if more than one record per unique_id and calendar_year
+```{r}
+multiples <- nrow(ocs_services[, .N,.(unique_id, program_year)][N > 1])
+multiples
+```
+
+### Group and Filter
+For our purposes we only need to know that a person has had at least one service in a year. We eliminate duplication by grouping.
+```{r}
+ocs_services_by_year <- ocs_services[, .N, .(unique_id, program_year)][, .(unique_id, program_year)]
+```
+
+### write to csv
+```{r}
+fwrite(ocs_services_by_year, here("data/working/OCS/ocs_services_by_year.csv"))
+```

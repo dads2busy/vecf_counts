@@ -1,0 +1,44 @@
+---
+title: "Ingest DSS"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## LOAD LIBRARIES AND FUNCTIONS
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(data.table)
+library(dataplumbr)
+library(here)
+library(inspectdf)
+library(maditr)
+```
+
+### write to csv
+```{r}
+fwrite(dss_snap_customers_by_year_merged, here("data/working/DSS/dss_snap_customers_by_year.csv"))
+```
+
+## DSS Foster Care Customers by Year
+### Load data file
+```{r cache=TRUE, message=FALSE}
+dss_foster_customers_by_year <- fread(here("data/original/q5/DSS/DSS FOSTER CARE CUSTOMER By Year.csv"), colClasses = "character")
+```
+
+### Standardize column names
+```{r}
+colnames(dss_foster_customers_by_year) <- name.standard_col_names(colnames(dss_foster_customers_by_year))
+```
+
+### Check if more than one record per unique_id and calendar_year
+```{r}
+multiples <- nrow(dss_foster_customers_by_year[, .N,.(unique_id, calendar_year_number)][N > 1])
+multiples
+```
+
+### write to csv
+```{r}
+fwrite(dss_foster_customers_by_year, here("data/working/DSS/dss_foster_customers_by_year.csv"))
+```

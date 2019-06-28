@@ -1,0 +1,174 @@
+---
+title: 'Profile Dataset: DOE Student Records'
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(inspectdf)
+library(dplyr)
+library(data.table)
+library(here)
+library(maditr)
+library(dataplumbr)
+library(ggplot2)
+library(knitr)
+library(zipcode)
+library(maps)
+library(kableExtra)
+```
+
+```{r, include=FALSE}
+dt_unprepared <- fread(here("data/original/q5/DOE/Student Records.csv"), colClasses = "character")
+dt <- fread(here("data/working/DOE/doe_student_records_by_year_dmgs_prek.csv"), colClasses = "character")
+```
+## Dataset Preparation
+Provided datasets are often vastly different from each other in terms of both schema and structure. To prepare for data profiling, datsets fields are checked for spelling errors and converted to a standardized format. If the dataset does not provide records at the level of aggregation required (e.g. each row is unique for a person and year) then the dataset is restructured.
+
+#### Task: Preparation of Field/Column Names
+Field/Column names standardized.
+```{r dataset-fields, echo=FALSE}
+
+```
+
+#### Task: Restructuring of Datset to Required Level of Aggregation
+Significant restructuring required for use for this case. The Student Records dataset is longitudinal, meaning by definition there are multiple records per student per year. Therefore, some form of deduplication becomes necessary to get to the required level of aggregation, in this case one record per student per year. A deduplication algorithm based on the premise "majority wins, tie goes to most recently entered" was developed and employed for the deduplication, and the columns were subselected to those necessary for the study.
+
+```{r dataset-restructuring, echo=FALSE}
+fields_original <- colnames(dt_unprepared)
+fields_prepared <- colnames(dt)
+n <- max(length(fields_original), length(fields_prepared))
+dataset_fields <- data.table(fields_original = fields_original[1:n], fields_prepared = fields_prepared[1:n])
+kable(dataset_fields, "html")
+```
+
+```{r, echo=FALSE}
+kable(dt[!var.is_blank(prek_funding_code)][1:5], "html") %>% kable_styling(font_size = 7)
+```
+
+
+## Uniqueness
+The concept of data uniqueness can be generalized as the number of unique valid values that have been entered in a record field, or as a combination of record field values within a dataset. Uniqueness is not generally discussed in terms of data quality, but for the purposes of answering research questions, the variety and richness of the data is of paramount importance. Most notably, if a record field has very little value uniqueness (e.g. entries in the field ‘State’ for an analysis of housing within a county, which of course would be within a single state), then its utility would be quite low and can be conceptualized as having low quality in terms of the research question at hand.
+
+### Test: Numerical Frequencies
+There were no numerical items in this dataset
+
+### Test: Categorical Frequencies
+```{r uniqueness, echo=FALSE}
+dt %>% 
+  dt_select(-1) %>% 
+  inspect_cat() %>%
+  show_plot(high_cardinality = 1)
+```
+
+
+## Completeness
+The concept of data completeness can be generalized as the proportion of data provided versus the proportion of data required. Data that is missing may additionally be categorized as record fields not containing data, records not containing necessary fields, or datasets not containing the requisite records. The most common conceptualization of completeness is the first, record field not containing data. This conceptualization of data completeness can be thought of as the proportion of the data that has values to the proportion of data that ’should’ have values. That is, a set of data is complete with respect to a given purpose if the set contains all the relevant data for that purpose.
+
+#### Test: Record Completeness (The Number of Records with Empty Values in a Field/Column)
+```{r record-completeness, echo=FALSE}
+# Number of cell values missing per row
+row_empties <- rowSums(var.is_blank(dt))
+
+# Create better visualization
+row_empties_dt <- as.data.table(row_empties)
+records_with_empties <- data.table(rows_with_empties = row_empties_dt[row_empties > 0, .N])
+kable(records_with_empties, "html")
+```
+
+#### Test: Item Completeness (The Number Cells Missing Values in each Field/Column)
+```{r item-completeness, echo=FALSE}
+# Number of cell values missing per column
+col_empties <- colSums(var.is_blank(dt))
+
+# Create better visualization
+
+col_empties_dt <- as.data.table(col_empties, keep.rownames = T)
+#dtt <- setDT(df, keep.rownames=TRUE)
+colnames(col_empties_dt) <- c("item", "empties")
+item_empties <- col_empties_dt[order(-empties)]
+kable(item_empties, "html")
+```
+
+## Valid Values
+The concept of value validity can be conceptualized as the percentage of elements whose attributes possess expected values. The actualization of this concept generally comes in the form of straight-forward domain constraint rules.
+
+#### Test: Count and Percetage of Invalid Values in each Field/Column
+```{r valid-values-school_year, echo=FALSE}
+# school year
+invalid_school_year_dt <- dt[!var.is_blank(school_year)][!school_year %in% seq(2007, 2018, 1)]
+invalid_school_year <-  data.table(invalid_school_year = nrow(invalid_school_year_dt))
+```
+
+```{r valid-values-birth_month, echo=FALSE}
+# birth month
+invalid_birth_month_dt <- dt[!var.is_blank(birth_month)][!birth_month %in% c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")]
+invalid_birth_month <-  data.table(invalid_birth_month = nrow(invalid_birth_month_dt))
+```
+
+```{r valid-values-birth_year, echo=FALSE}
+# birth year
+invalid_year_dt <- dt[!var.is_blank(birth_year)][!birth_year %in% seq(2000, 2017, 1)]
+invalid_birth_year <-  data.table(invalid_birth_year = nrow(invalid_year_dt))
+```
+
+```{r valid-values-race_type, echo=FALSE}
+# race type
+invalid_race_type_dt <- dt[!var.is_blank(race_type)][!race_type %in% c("1","2","3","4","5","6","99")]
+invalid_race_type <-  data.table(invalid_race_type = nrow(invalid_race_type_dt))
+```
+
+```{r valid-values-ethnic_flag, echo=FALSE}
+# ethnic flag
+invalid_ethnic_flag_dt <- dt[!var.is_blank(ethnic_flag)][!ethnic_flag %in% c("Y","N")]
+invalid_ethnic_flag <-  data.table(invalid_ethnic_flag = nrow(invalid_ethnic_flag_dt))
+```
+
+```{r valid-values-prek_funding_code, echo=FALSE}
+invalid_prek_fund_code_dt <- dt[!var.is_blank(prek_funding_code)][!prek_funding_code %in% c("1","2","3","4","5","6","7","8","9","10","11")]
+invalid_prek_fund_code <-  data.table(invalid_prek_fund_code = nrow(invalid_prek_fund_code_dt))
+```
+
+
+```{r, echo=FALSE}
+
+vv_multi <- data.table(invalid_school_year, 
+                       invalid_birth_year, 
+                       invalid_birth_month,
+                       invalid_race_type,
+                       invalid_ethnic_flag,
+                       invalid_prek_fund_code)
+
+vv_multi_t <- as.data.table(t(vv_multi), keep.rownames = T)
+
+colnames(vv_multi_t) <- c("item", "count")
+vv_multi_t[, pct := round(100*(count/nrow(dt)), 1)]
+
+g <- ggplot(vv_multi_t, aes(x=item, y=count)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Count") +
+  labs(title = "Count of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=count), position=position_dodge(width=0.9), vjust=-0.2)
+g
+
+gp <- ggplot(vv_multi_t, aes(x=item, y=pct)) +
+  geom_bar(stat="identity", colour="black", fill="white") + 
+  xlab("Race") + ylab("Percent") +
+  labs(title = "Percent of Individuals with Invalid Values",
+       subtitle = "Dataset: DSS Customers By Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=pct), position=position_dodge(width=0.9), vjust=-0.2)
+gp
+```
+
+
+## Longitudinal Consistency (Unexpected Changes in Demographics)
+There are no longitudinal tests for this dataset.
+
+
