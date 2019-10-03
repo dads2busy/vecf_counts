@@ -1,108 +1,114 @@
-## LOAD LIBRARIES
+
 
 ```{r load_libraries, warning=FALSE, message=FALSE}
 library(data.table)
 library(dataplumbr)
-library(tidycensus)
 library(ggplot2)
 library(here)
 library(knitr)
 library(kableExtra)
 library(sf)
 library(sp)
+library(tidycensus)
 ```
 
-## DSS RECORDS
-Load DSS records
 
-```{r dss_customers_load, cache=TRUE, message=FALSE}
+```{r load-data, cache=TRUE, message=FALSE}
 dss_customers_by_year <- fread(here("data/working/DSS/dss_customers_by_year.csv"), colClasses = "character")
-```
-
-## OCS RECORDS
-Load OCS records
-
-```{r ocs_services_load, cache=TRUE, message=FALSE}
 ocs_services_by_year <- fread(here("data/working/OCS/ocs_services_by_year.csv"), colClasses = "character")
 ocs_services_by_year[, ocs_indicator := "Y"]
-```
-
-## SNAP RECORDS
-Load SNAP records 
-
-```{r snap_customers_by_location_year_load, cache=TRUE, message=FALSE}
 doe_student_dmgs_by_year <- fread(here("data/working/DOE/doe_student_records_by_year_dmgs_prek.csv"), colClasses = "character") 
-```
-
-## DOE RECORDS
-Load DOE records 
-
-```{r doe_dmgs, cache=TRUE, message=FALSE}
 dss_snap_customers_by_year <- fread(here("data/working/DSS/dss_snap_customers_by_year.csv"), colClasses = "character")
-```
-
-## TANF RECORDS
-Load TANF records 
-
-```{r doe_dmgs, cache=TRUE, message=FALSE}
 dss_tanf_customers_by_year <- fread(here("data/working/DSS/dss_tanf_customers_by_year.csv"), colClasses = "character")
-```
-
-## FOSTER RECORDS
-Load FOSTER records 
-
-```{r doe_dmgs, cache=TRUE, message=FALSE}
 dss_foster_customers_by_year <- fread(here("data/working/DSS/dss_foster_customers_by_year.csv"), colClasses = "character")
 ```
 
-## Join the DSS and OCS records
+## Transformations
 
-```{r join_dss_ocs}
-dss_ocs_cust_by_year <- merge(dss_customers_by_year, ocs_services_by_year, by.x = c("unique_id", "calendar_year_number"), by.y = c("unique_id", "program_year"), all.x = TRUE)
+update/create service indicator variables for later use...
+
+```{r create-part_b-indicator, echo=FALSE}
+doe_student_dmgs_by_year[prek_funding_code == "5", part_b := "Y"]
 ```
 
-update service indicator variable for later use
 
-```{r update_ocs_service_indicator}
+The PreK Funding Code code is used if the student slot is fully funded with federal Special Education Preschool funds. The code may apply to students with Individualized Education Programs who receive special education and related services in a public special education early childhood classroom, regular early childhood program, or in a service-provider location (e.g., therapist’s office). The code may also apply to students in a private community-based program if services are funded with federal Special Education Preschool funds. The funding code is not be used if the student slot is funded by Head Start, VPI, or VPI+.
+
+
+## Join Datasets on ID and Year
+
+```{r join-dss_ocs, echo=FALSE}
+dss_ocs_cust_by_year <-
+  merge(
+  dss_customers_by_year,
+  ocs_services_by_year,
+  by.x = c("unique_id", "calendar_year_number"),
+  by.y = c("unique_id", "program_year"),
+  all.x = TRUE
+  )
+
 dss_ocs_cust_by_year[is.na(ocs_indicator), ocs_indicator := "N"]
 ```
 
-## Join the DSS, OCS and SNAP records
+```{r join-dss_ocs_snap, echo=FALSE}
+dss_ocs_cust_by_year_sub <-
+  dss_ocs_cust_by_year[, !c("age_class_code", "age_type_code")]
 
-```{r join dss_ocs_snap}
-dss_snap_customers_by_year_sub <- dss_snap_customers_by_year[, .(unique_id, calendar_year_number, snap_county_fips_code = county_fips_code_1)]
-dss_ocs_snap_cust_by_year <- merge(dss_ocs_cust_by_year, dss_snap_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+dss_snap_customers_by_year_sub <-
+  dss_snap_customers_by_year[, .(unique_id, calendar_year_number, snap_county_fips_code = county_fips_code_1)]
+  
+dss_ocs_snap_cust_by_year <-
+  merge(
+  dss_ocs_cust_by_year_sub,
+  dss_snap_customers_by_year_sub,
+  by = c("unique_id", "calendar_year_number"),
+  all.x = TRUE
+  )
 ```
 
-## Join the DSS, OCS, SNAP and DOE records
+```{r join-dss_ocs_snap_doe, echo=FALSE}
+doe_student_dmgs_by_year_sub <-
+  doe_student_dmgs_by_year[prek_funding_code == "5"]
 
-```{r join dss_ocs_snap_doe}
-doe_student_dmgs_by_year_sub <- doe_student_dmgs_by_year[prek_funding_code == "5"]
-dss_ocs_snap_doe_cust_by_year <- merge(dss_ocs_snap_cust_by_year, doe_student_dmgs_by_year_sub, by.x = c("unique_id", "calendar_year_number"), by.y = c("unique_id", "school_year"), all.x = TRUE)
+dss_ocs_snap_doe_cust_by_year <-
+  merge(
+  dss_ocs_snap_cust_by_year,
+  doe_student_dmgs_by_year_sub,
+  by.x = c("unique_id", "calendar_year_number"),
+  by.y = c("unique_id", "school_year"),
+  all.x = TRUE
+  )
+
+dss_ocs_snap_doe_cust_by_year[is.na(part_b), part_b := "N"]
 ```
 
-## Join the DSS, OCS, SNAP and TANF records
+```{r join-dss_ocs_snap_doe_tanf, echo=FALSE}
+dss_tanf_customers_by_year_sub <-
+  dss_tanf_customers_by_year[, .(unique_id, calendar_year_number, tanf_county_fips_code = county_fips_code_1)]
 
-```{r join dss_ocs_snap}
-dss_tanf_customers_by_year_sub <- dss_tanf_customers_by_year[, .(unique_id, calendar_year_number, tanf_county_fips_code = county_fips_code_1)]
-dss_ocs_snap_doe_tanf_cust_by_year <- merge(dss_ocs_snap_doe_cust_by_year, dss_tanf_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+dss_ocs_snap_doe_tanf_cust_by_year <-
+  merge(
+  dss_ocs_snap_doe_cust_by_year,
+  dss_tanf_customers_by_year_sub,
+  by = c("unique_id", "calendar_year_number"),
+  all.x = TRUE
+  )
 ```
 
-## Join the DSS, OCS, SNAP, TANF and FOSTER records
+```{r join-dss_ocs_snap_doe_tanf_fost, echo=FALSE}
+dss_foster_customers_by_year_sub <-
+  dss_foster_customers_by_year[, .(unique_id, calendar_year_number, foster_county_fips_code = county_fips_code)]
 
-```{r join dss_ocs_snap}
-dss_foster_customers_by_year_sub <- dss_foster_customers_by_year[, .(unique_id, calendar_year_number, foster_county_fips_code = county_fips_code)]
-dss_ocs_snap_doe_tanf_fost_cust_by_year <- merge(dss_ocs_snap_doe_tanf_cust_by_year, dss_foster_customers_by_year_sub, by = c("unique_id", "calendar_year_number"), all.x = TRUE)
+dss_ocs_snap_doe_tanf_fost_cust_by_year <-
+  merge(
+  dss_ocs_snap_doe_tanf_cust_by_year,
+  dss_foster_customers_by_year_sub,
+  by = c("unique_id", "calendar_year_number"),
+  all.x = TRUE
+  )
 ```
 
-## Remove columns not currently needed
-
-```{r}
-dss_ocs_snap_doe_tanf_fost_cust_by_year[, age_class_code := NULL]
-dss_ocs_snap_doe_tanf_fost_cust_by_year[, age_type_code := NULL]
-```
-
-## Table of IDs vs Services
+## Table of Services and Demographics per Individual
 ```{r}
 ids_services <- dss_ocs_snap_doe_tanf_fost_cust_by_year[, .(unique_id,
                                                             year = calendar_year_number,
@@ -113,21 +119,24 @@ ids_services <- dss_ocs_snap_doe_tanf_fost_cust_by_year[, .(unique_id,
                                                             foster = foster_care_case_indicator,
                                                             fips_foster = foster_county_fips_code,
                                                             ocs = ocs_indicator,
-                                                            part_b = prek_funding_code,
+                                                            part_b = part_b,
                                                             wht = customer_race_is_white_indicator,
                                                             blk = customer_race_is_black_indicator,
                                                             asn = customer_race_is_asisan_indicator,
                                                             ind = cust_race_is_amer_indian_alaska_native_ind,
                                                             isl = cust_race_is_hawaiian_pacific_islander_ind,
                                                             oth = customer_race_is_other_indicator,
-                                                            ethn = ethnicity_code
+                                                            ethn = ethnicity_code,
+                                                            brthyr = year_of_birth,
+                                                            gndr = gender_code
                                                             )]
-ids_services[is.na(part_b), part_b := "N"]
-ids_services[!is.na(part_b), part_b := "Y"]
 ```
 
+## Data Depulication / Item Creation for Certain Types of Analysis
+Developed easily replicable algorithm for 
+
 ### Apply Deduplication algorithm to get One Record per ID
-```{r}
+```{r deduplication-algorithm}
 set.dedup_choice <- function(df) {
     dt <- data.table::setDT(df)
     for (j in colnames(dt)) {
@@ -164,15 +173,34 @@ fwrite(ids_services_dedup, here("data/working/ids_services_dedup.csv"))
 
 ```{r}
 ids_services_dedup <- fread(here("data/working/ids_services_dedup.csv"))
-kable(ids_services_dedup[1:25], caption = "All Services, Locations, Races, and Ethnicity per Child") %>%
-  kable_styling(bootstrap_options = "striped", font_size = 9, full_width = F)
+ids_services_dedup_15 <- ids_services_dedup[1:15]
+cols <- colnames(ids_services_dedup_15)
+cols <- c("ID", "Year", "Receives TANF Services", "TANF Services County", "Receives SNAP Services", 
+          "SNAP Services County", "Receives Foster Services", "Foster Services County",
+          "Receives Behavioral Services", "Receives Special Edu Services", "Race White", "Race Black", 
+          "Race Asian", "Race American Indian", "Race Pacific Isl", "Race Other", "Is Hispanic", "Birth Year", "Gender")
+colnames(ids_services_dedup_15) <- cell_spec(cols, "html", 
+                                             color = "Gray", 
+                                             angle = -90, 
+                                             extra_css = "float: left; white-space: nowrap; width: 10px; margin: 2px 2px 2px 2px; text-align: left;")
+
+kable(ids_services_dedup_15,
+      "html",
+      align = c("c"),
+      caption = "All Services, Locations, Races, Ethnicity and Birth Year<br />per Child 2013-2016<br /><br /><br /><br /><br /><br />",
+      escape = F) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 9, full_width = F, position = "center") %>%
+  footnote(c("DSS Customers by Year", "DSS SNAP Customers by Year", "DSS TANF Customers by Year", "DSS Foster Customers by Year",
+      "OCS Services by Year", "DOE Student Records"), general_title = "Datasets")
 ```
 
 ## Receiving SNAP (source DSS) and Part-B (source DOE) Benefits by Year by County
 
 ```{r}
-snap_partb_by_year_fips <- ids_services[snap=="Y" && part_b=="Y", .(cnt = length(unique(unique_id))), .(year, fips_snap)][order(fips_snap, year, -cnt)]
+snap_partb_by_year_fips <- ids_services[snap=="Y" & part_b=="Y", .(cnt = length(unique(unique_id))), .(year, fips_snap)][order(fips_snap, year, -cnt)]
 snap_partb_by_year_fips[, GEOID := paste0("51", fips_snap)]
+
+ids_services[part_b=="Y" & snap=="Y", .N, .(ethn, gndr)]
 ```
 
 ```{r get_virginia_county_geography, message=FALSE, error=FALSE, results="hide"}
@@ -188,7 +216,7 @@ mydata <- snap_partb_by_year_fips_geo[snap_partb_by_year_fips_geo$year=="2015",]
 ggplot() +
   geom_sf(data = mydata, aes(fill = cnt)) +
   labs(title = "Count of Individuals Receiving SNAP and Part B Benefits 2015",
-       subtitle = "Datasets: DSS Customers By Year, DOE Student Records")
+       subtitle = "Datasets: DSS Customers By Year, DOE Student Records") 
 ```
 
 
